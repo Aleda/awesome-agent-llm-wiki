@@ -22,7 +22,7 @@ agent 的工作信息随步数增长：工具输出、环境观察、中间推�
 ### 谁来决定放什么
 
 - harness 管理的上下文：固定窗口、截断、按规则定期压缩；阈值压得很低的一种见[频繁上下文压缩](../concepts/frequent-context-compaction.md)。
-- [模型自管理上下文](../concepts/model-managed-context.md)：模型自己决定读入、写出和丢弃哪些内容。
+- [模型自管理上下文](../concepts/model-managed-context.md)：模型自己决定读入、写出和丢弃哪些内容。最早的来源是把 context window 当作主存、让模型在主存和外存之间换入换出的 [MemGPT](../papers/202310-memgpt.md)，后来 CLM 把编辑范围放开到整个实时上下文。
 - [成功门控的效率奖励](../concepts/success-gated-efficiency-reward.md)：用 RL 训练模型管理上下文时，只在成功轨迹之间奖励更低的推理成本。
 - [语义状态空间模型](../concepts/semantic-state-space-model.md)：把单动作压缩后训练进模型，每轮读写一段自然语言状态，代替累积完整历史。
 
@@ -38,7 +38,7 @@ agent 的工作信息随步数增长：工具输出、环境观察、中间推�
 ## 关键争论
 
 - 长上下文还是频繁压缩：把 context window 做长并保留全部历史，与保持短上下文并频繁压缩，哪条路线在成本和任务完成率上更划算；压缩时丢掉的信息事后能否找回。NVIDIA 作者站在频繁压缩一边，报告把阈值收紧到 16K/12K 时长程任务准确率大体持平（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3¶4），丢掉的历史靠存档加选择性读取补回（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3.1¶4）。省钱的前提是服务方按窗口大小部署和定价，按现行标价压缩可能更贵（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) Tab. 3），见[频繁上下文压缩](../concepts/frequent-context-compaction.md#共识与分歧)。
-- 模型自管理还是 harness 管理：上下文的取舍交给模型通过训练学会，还是由外部规则决定。前者需要合适的训练信号，后者依赖人工设计，换任务时要重新调。CLM 作者认为固定规则会丢掉需要逐字保留的信息（[CLM](../papers/202609-context-language-models.md) §3¶2），NVIDIA 作者认为按阈值压缩在真实 benchmark 上已经够用（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3¶4），两篇没有直接对照，见[模型自管理上下文](../concepts/model-managed-context.md#共识与分歧)。
+- 模型自管理还是 harness 管理：上下文的取舍交给模型通过训练学会，还是由外部规则决定。前者需要合适的训练信号，后者依赖人工设计，换任务时要重新调。MemGPT 是一种折中：何时腾空间由系统按 token 阈值决定，存什么、取什么由模型决定（[MemGPT](../papers/202310-memgpt.md) §2.2¶2）。CLM 作者认为固定规则会丢掉需要逐字保留的信息（[CLM](../papers/202609-context-language-models.md) §3¶2），NVIDIA 作者认为按阈值压缩在真实 benchmark 上已经够用（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3¶4），两篇没有直接对照，见[模型自管理上下文](../concepts/model-managed-context.md#共识与分歧)。
 - 标称长度和有效长度：模型声称支持的 context window，与它在多步任务里能稳定利用的长度之间差多少，该用什么任务来测。
 
 ## 最近进展

@@ -26,9 +26,15 @@ type: raw
 - [可验证的协调放缓](concepts/verifiable-coordinated-slowdown.md) — 多家前沿实验室在能相互核实的前提下，按相同条件同时放缓或暂停前沿 AI 开发
 - [记忆笔记](concepts/memory-notes.md) — 模型把跨任务学到的规则和教训写成笔记并反复改写，让后续任务做得更好
 - [连续任务流评测](concepts/streaming-task-evaluation.md) — 把前后依赖的任务按顺序连成一条流让 agent 边做边学，用来测持续学习能力
+- [记忆流与反思](concepts/memory-stream-reflection.md) — 把全部经历按时间记成自然语言流，按近因、重要性、相关性取回，并定期提炼出更高层的反思写回
+- [写入时记忆整合](concepts/memory-consolidation.md) — 新信息写入时取出相似旧记忆，由 LLM 决定新增、改写、合并或删除，让记忆库保持一致
 
 ## 论文
 
+- [Generative Agents](papers/202304-generative-agents.md) — 用记忆流、反思和规划驱动 25 个 agent 在沙盒小镇里生活，行为比消融版本和众包扮演更可信
+- [MemGPT](papers/202310-memgpt.md) — 借操作系统的虚拟内存，让模型用函数调用在上下文和外部存储之间换入换出，突破固定窗口
+- [A-MEM](papers/202502-a-mem.md) — 仿 Zettelkasten 把每条记忆写成带标签的笔记，写入时自动建链并改写相关旧笔记
+- [Mem0](papers/202504-mem0.md) — 从每轮对话抽取事实，由 LLM 对相似旧记忆选择增删改，LOCOMO 上接近全文效果且延迟低得多
 - [Context Language Models](papers/202609-context-language-models.md) — 把实时上下文镜像成文件，让模型用 Bash 自由编辑，长程任务上更准也更省算力
 - [You don't need long context](papers/202611-you-dont-need-long-context.md) — 频繁压缩加按需读取，把上下文压到 16K–48K，长程和长输入任务基本不掉点
 
@@ -47,7 +53,11 @@ type: raw
 ## 实体
 
 - [Anthropic](entities/anthropic.md) — 美国 AI 公司，开发 Claude 系列模型，本页同时收录 The Anthropic Institute 的素材
+- [Google](entities/google.md) — 美国科技公司，本页同时收录 Google Research 和 Google DeepMind 参与的素材
 - [Jack Clark](entities/jack-clark.md) — Anthropic 联合创始人，长期负责政策工作，撰写 AI 周报 Import AI
+- [Mem0（公司）](entities/mem0.md) — 开发 AI agent 长期记忆层的公司，产品和论文都叫 Mem0
 - [Meta](entities/meta.md) — 美国科技公司，本页同时收录其 Meta Superintelligence Labs 参与的素材
 - [NVIDIA](entities/nvidia.md) — 美国 GPU 和 AI 计算平台公司，本页同时收录 NVIDIA Research 参与的素材
+- [Stanford University](entities/stanford.md) — 美国斯坦福大学，位于加州斯坦福的私立研究型大学
+- [UC Berkeley](entities/uc-berkeley.md) — 美国加州大学伯克利分校，位于加州伯克利的公立研究型大学
 - [University of Washington](entities/uw.md) — 美国华盛顿大学，位于西雅图的公立研究型大学

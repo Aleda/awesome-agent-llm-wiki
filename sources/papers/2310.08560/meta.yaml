@@ -1,0 +1,16 @@
+id: '2310.08560'
+title: 'MemGPT: Towards LLMs as Operating Systems'
+authors:
+- Charles Packer
+- Sarah Wooders
+- Kevin Lin
+- Vivian Fang
+- Shishir G. Patil
+- Ion Stoica
+- Joseph E. Gonzalez
+published: '2023-10-12T17:51:32Z'
+updated: '2024-02-12T18:59:46Z'
+abs_url: https://arxiv.org/abs/2310.08560v2
+pdf_url: https://arxiv.org/pdf/2310.08560v2
+primary_category: cs.AI
+comment: Code and data available at https://research.memgpt.ai

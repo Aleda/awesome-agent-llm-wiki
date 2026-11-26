@@ -21,7 +21,7 @@ order: 4
 
 ### 从反馈中学
 
-- 语言反馈与反思：把失败原因写成文字，供下一次尝试参考（Reflexion 一类）。
+- 语言反馈与反思：把失败原因写成文字，供下一次尝试参考（Reflexion 一类）。Generative Agents 也有"反思"，但它概括的是对人和事的推断，不针对任务成败，归在 memory 方向的[记忆流与反思](../concepts/memory-stream-reflection.md)。
 - 技能库：把成功的行为保存为可调用的代码，逐步积累（Voyager 一类）。
 
 ### 怎么评测

@@ -53,6 +53,10 @@ CLM 论文（arXiv 2609.37725）提出的上下文管理诊断 benchmark，含 N
 
 NVIDIA 的桌面级 AI 计算机，128GB 统一内存。You don't need long context 论文（arXiv 2611.05306）用它测本地部署时生成延迟和显存随上下文长度的变化。
 
+## DialSim
+
+基于《老友记》《生活大爆炸》《办公室》剧本构建的长期多方对话问答数据集，覆盖 1,300 个会话；A-MEM 论文用它作 LoCoMo 之外的第二个评测集。
+
 ## EdgeBench
 
 在真实软件仓库里做长时间优化的 benchmark：agent 在无网络的容器里改进一个代码库，由评测器按 0–100 打分。CLM 论文从中选了 10 个任务，称为 EdgeBench-10，每次运行 12 小时。
@@ -73,6 +77,10 @@ Group Relative Policy Optimization，DeepSeekMath（2024）提出的强化学习
 
 Heilbronn 三角形问题：在单位区域内放置 n 个点，使任意三点构成的三角形中面积最小的那个尽可能大。AlphaEvolve 和 OpenEvolve 把它用作数学优化测试题。
 
+## LoCoMo
+
+评测长期对话记忆的数据集（Maharana 等，2024），两人跨多次会话聊日常，每段对话配一组问答，按单跳、多跳、时间、开放域、对抗分类；也写作 LOCOMO。A-MEM 论文说对话平均约 9K token，Mem0 论文说约 26000 token。
+
 ## LOONG
 
 多文档长上下文问答 benchmark，1,600 道题，一道题通常依赖多份完整的财报、法律案例或论文，中英文都有，证据有意分散在多份文档里。
@@ -88,6 +96,10 @@ OSU NLP 组 2023 年发布的 web agent benchmark，任务取自真实网站，�
 ## mini-swe-agent
 
 SWE-agent 团队发布的极简软件工程 agent harness：每轮只发一个 Bash 命令，动作和结果逐条追加进对话。You don't need long context 论文以它为基础 harness，并推广出面向非编程任务的 mini-agent。
+
+## Multi-Session Chat
+
+Xu 等 2021 年发布的多会话对话数据集（MSC），由众包标注者扮演固定人设、跨五次会话聊天；MemGPT 论文在它之上加了第六次会话的问答来测记忆。
 
 ## NeoLab
 
@@ -121,6 +133,10 @@ NVIDIA 发布的合成长上下文测试集，13 个任务，包括多种 needle
 
 开源的 LLM 推理服务框架。它的 RadixAttention 用基数树管理 KV cache，让共享前缀的请求复用已算好的缓存。
 
+## Smallville
+
+Generative Agents 论文自建的像素风沙盒小镇，有咖啡馆、酒吧、学校、住宅等场所，住着 25 个 agent。
+
 ## Software World
 
 CLM 论文自建的多仓库优化任务：六个 agent 各负责一个仓库（requests、urllib3 和四个下游包），并行工作 24 小时以上提升性能，在 agent 看不到的下游包基准上按几何平均加速比打分。
@@ -136,3 +152,11 @@ OpenThoughts-TBLite，由 OpenThoughts-Agent 团队发布的终端 agent benchma
 ## TerminalBench
 
 评测 agent 在终端环境中完成任务的 benchmark，也写作 Terminal-Bench。每个任务在容器里运行，agent 通过命令行操作，由任务附带的测试脚本判定是否完成。
+
+## Zep
+
+为 AI agent 提供记忆管理的平台，把记忆存成图；Mem0 论文把它作为基线之一，并描述它在每个节点存一份摘要、在边上存事实。
+
+## Zettelkasten
+
+卡片盒笔记法：每张卡片只记一个原子化的想法，卡片之间用链接相连，知识网络随新卡片加入而生长。A-MEM 借用了这一组织方式。
