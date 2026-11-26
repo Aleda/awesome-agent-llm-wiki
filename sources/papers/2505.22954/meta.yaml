@@ -1,0 +1,14 @@
+id: '2505.22954'
+title: 'Darwin Godel Machine: Open-Ended Evolution of Self-Improving Agents'
+authors:
+- Jenny Zhang
+- Shengran Hu
+- Cong Lu
+- Robert Lange
+- Jeff Clune
+published: '2025-05-29T00:26:15Z'
+updated: '2026-03-12T23:47:40Z'
+abs_url: https://arxiv.org/abs/2505.22954v3
+pdf_url: https://arxiv.org/pdf/2505.22954v3
+primary_category: cs.AI
+comment: Code at https://github.com/jennyzzt/dgm

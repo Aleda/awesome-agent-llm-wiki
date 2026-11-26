@@ -47,3 +47,6 @@ type: raw
 2026-11-27 录入素材 · papers/202303-reflexion.md、papers/202305-voyager.md
 2026-11-27 新建 · concepts/verbal-reinforcement.md、concepts/skill-library.md、entities/northeastern.md、entities/mit.md、entities/caltech.md、entities/ut-austin.md、entities/uw-madison.md
 2026-11-27 更新 · concepts/memory-notes.md、concepts/memory-stream-reflection.md、papers/202210-react.md、papers/202304-generative-agents.md、papers/202510-ace.md、topics/continual-learning.md、glossary.md、index.md
+2026-11-27 录入素材 · papers/202203-star.md、papers/202401-self-rewarding-language-models.md、papers/202408-ai-scientist.md、papers/202505-darwin-godel-machine.md
+2026-11-27 新建 · concepts/bootstrapped-reasoning.md、concepts/self-rewarding.md、concepts/self-modifying-agent.md、entities/nyu.md、entities/sakana-ai.md、entities/ubc.md、entities/vector-institute.md、entities/oxford.md
+2026-11-27 更新 · concepts/automated-ai-research.md、concepts/human-bottleneck-in-ai-rd.md、concepts/ai-rd-uplift-measurement.md、papers/202210-react.md、papers/202302-toolformer.md、topics/rsi.md、glossary.md、index.md

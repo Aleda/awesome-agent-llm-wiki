@@ -17,9 +17,17 @@ type: raw
 
 Artificial Analysis Long Context Reasoning，Artificial Analysis 发布的长上下文推理 benchmark：100 道人工编写的题目，每题要跨一组平均约 100K token 的真实文档综合证据、多步推理作答。
 
+## Aider
+
+开源的命令行 AI 编程助手，能在现有代码库里按要求实现功能、修 bug 和重构。The AI Scientist 用它改代码跑实验，DGM 在 Polyglot 上拿它作人工设计 agent 的对照。
+
 ## ALFWorld
 
 Shridhar 等 2020 年发布的文本游戏环境，与具身 benchmark ALFRED 对齐：agent 用文本动作在模拟的家庭环境里移动和操作物品，完成 6 类高层目标（如在台灯下查看纸张）。ReAct 论文在其中 134 个未见过的游戏上评测成功率。
+
+## AlpacaEval
+
+用 GPT-4 等强模型当评判者、比较指令跟随模型回答胜率的自动评测；AlpacaEval 2.0 报告对 GPT-4 Turbo 的胜率，测试集有 805 条指令。
 
 ## Amdahl's law
 
@@ -57,6 +65,10 @@ Anthropic 以预览形式提供的模型，2026 年发布。Anthropic 2026-09 �
 
 Anthropic Claude Opus 系列的一个版本，2026-11 前已发布。十字路口 2026-11-08 一期播客里，嘉宾谷雨用它举例说明 Computer Use 的操作层面已基本解决。
 
+## CommonsenseQA
+
+基于 ConceptNet 构造的五选一常识问答数据集，共 12,247 题，训练集 9,741 题、dev 集 1,221 题，test 集不公开；常缩写为 CQA。
+
 ## ContextBench
 
 CLM 论文（arXiv 2609.37725）提出的上下文管理诊断 benchmark，含 Needle Retention、Sudoku Sketchpad、KV Store、Log Triage 四个合成任务。任务不需要额外推理或知识，输入总量最高到上下文上限的 24 倍，只测 agent 怎样管理上下文。
@@ -76,6 +88,10 @@ NVIDIA 的桌面级 AI 计算机，128GB 统一内存。You don't need long cont
 ## DialSim
 
 基于《老友记》《生活大爆炸》《办公室》剧本构建的长期多方对话问答数据集，覆盖 1,300 个会话；A-MEM 论文用它作 LoCoMo 之外的第二个评测集。
+
+## DPO
+
+Direct Preference Optimization，直接用偏好对训练语言模型的方法，不单独训练奖励模型、也不跑强化学习。
 
 ## Dynamic Cheatsheet
 
@@ -145,6 +161,14 @@ Petroni 等 2019 年发布的事实知识探测 benchmark：把事实写成缺�
 
 Reflexion 论文发布的代码生成环境：40 道 LeetCode 困难题，均在 2022-10-08 之后发布，覆盖 19 种编程语言。
 
+## Llama 2
+
+Meta 2023 年发布的开放权重大语言模型系列，有 7B、13B、70B 等规模，另有对话微调版 Llama 2-Chat。
+
+## LLM-as-a-Judge
+
+用一个 LLM 按提示给的标准评价回答或产出的做法，可以打分，也可以在两个回答间判胜负。
+
 ## LoCoMo
 
 评测长期对话记忆的数据集（Maharana 等，2024），两人跨多次会话聊日常，每段对话配一组问答，按单跳、多跳、时间、开放域、对抗分类；也写作 LOCOMO。A-MEM 论文说对话平均约 9K token，Mem0 论文说约 26000 token。
@@ -177,6 +201,10 @@ NVIDIA 等 2022 年发布的开源 Minecraft AI 框架，含模拟环境和从 Y
 
 SWE-agent 团队发布的极简软件工程 agent harness：每轮只发一个 Bash 命令，动作和结果逐条追加进对话。You don't need long context 论文以它为基础 harness，并推广出面向非编程任务的 mini-agent。
 
+## MT-Bench
+
+多轮对话评测集，覆盖数学、代码、推理、角色扮演、写作等类别，由 GPT-4 按 10 分制给回答打分。
+
 ## Multi-Session Chat
 
 Xu 等 2021 年发布的多会话对话数据集（MSC），由众包标注者扮演固定人设、跨五次会话聊天；MemGPT 论文在它之上加了第六次会话的问答来测记忆。
@@ -200,6 +228,10 @@ Needle in a Haystack，在长篇无关文本的指定深度插入一句目标事
 ## perplexity
 
 困惑度，语言模型对一段文本的预测难度，等于平均负对数似然的指数；某个 token 的困惑度越低，说明模型越能根据前文猜到它。LLMLingua 用小模型的困惑度判断哪些 token 可以删掉。
+
+## Polyglot
+
+Aider 团队维护的编程 benchmark，题目涵盖 C++、Go、Java、JavaScript、Python、Rust 等多种语言，多数题要在单个文件里从零实现解法；排行榜报告 pass@2。
 
 ## prefix-reuse FLOPs
 
@@ -240,6 +272,10 @@ Princeton 团队 2023 年发布的软件工程 benchmark，任务取自真实 Gi
 ## SWE-bench Lite
 
 SWE-bench 的 300 题标准子集，只收自包含的功能性 bug 修复。SWE-agent 论文在它上面做消融和分析。
+
+## SWE-bench Verified
+
+OpenAI 经人工筛选的 SWE-bench 子集，共 500 题，保留确认可解的任务。
 
 ## TALM
 

@@ -93,4 +93,4 @@ relations:
 - 与 [ReAct](./202210-react.md)：Toolformer 把 ReAct 归入"按特定任务写 few-shot 提示、事先知道要用哪个工具"的一类，与自己的自监督方式对比（§6¶2）。ReAct 用提示让冻结的模型在多步里交替推理和行动（[ReAct](./202210-react.md) §2¶3），Toolformer 把单步调用训练进权重（§2¶8）；ReAct 的搜索可以多次改写查询，正是 Toolformer 自认缺少的交互能力（§7¶1）。见[推理与行动交替](../concepts/interleaved-reasoning-acting.md)。
 - 与 [SWE-agent](./202405-swe-agent.md)：两者对"能力放在哪里"的选择相反。Toolformer 改权重、不改工具接口；SWE-agent 固定模型，只改 agent 用的命令和反馈格式（[SWE-agent](./202405-swe-agent.md) §2¶4）。见[面向 agent 的计算机接口](../concepts/agent-computer-interface.md#共识与分歧)。
 - 与 [TALM](../glossary.md#talm)：Toolformer 说它是最接近的工作，用类似的自监督目标教模型用计算器和搜索引擎，但只在针对下游任务微调的设置下（§6¶2）。TALM 本库没有收录。
-- 与 STaR：Toolformer 把自己归入自训练和自举一类，在自己的预测上训练，只多了一步基于困惑度的筛选（§6¶3）；STaR 本库待录入。
+- 与 [STaR](./202203-star.md)：Toolformer 把自己归入自训练和自举一类，在自己的预测上训练，只多了一步基于困惑度的筛选（§6¶3）。STaR 按最终答案对错筛选推理（[STaR](./202203-star.md) §3.1¶1），Toolformer 按后续 token 损失筛选工具调用，见[自举推理](../concepts/bootstrapped-reasoning.md)。

@@ -5,7 +5,7 @@ summary: 执行环节交给 AI 后，人工审查和定研究方向成为限制�
 topics: [rsi]
 aliases: [research taste, 研究品味, human review bottleneck, 人工审查瓶颈, Amdahl 瓶颈, Amdahl's law in AI R&D]
 added: 2026-11-27
-status: emerging
+status: established
 relations:
   - { topic: rsi, rel: part-of }
 ---
@@ -51,6 +51,7 @@ Anthropic 设想了三种前景（§4¶7），区别在于人类环节最后剩�
 
 - 反方观点：仍在人手里的选题判断才最重要，没有这种判断，Claude 只是能干的助手（§4¶1）。
 - Anthropic 的回应分两层。保守解读：即使 Claude 始终没有好的研究品味，人只做个位数比例的定方向工作，每人驾驭的工作量变大，加速仍会复利（§4¶3）。激进解读：研究品味也可能只是又一个先做不好、后来做好的能力（§4¶4）。
+- 审查瓶颈在更早的端到端系统上已经出现：The AI Scientist 的作者不建议直接相信生成论文的科学内容，要人工检查实现再信结果（[The AI Scientist](../papers/202408-ai-scientist.md) §8¶3）；案例论文里真正的缺陷要有领域知识才看得出，自动评审员只抓到一部分（[The AI Scientist](../papers/202408-ai-scientist.md) §5¶13）。作者还担心未来模型提出的想法人类难以评估（[The AI Scientist](../papers/202408-ai-scientist.md) §5¶13），本库判断：这和 Anthropic 说的审查跟不上生成就成为瓶颈（§3¶1）是同一个问题。
 - Anthropic 认为 AI 进展很少靠"顿悟"，多数是放大规模、修问题、再试，这类工作已经越来越自动化（§4¶2）。本库判断：这一论证依赖"顿悟式进展只占少数"的历史观察，能否外推到品味本身成为瓶颈的阶段，原文没有给证据。
 
 ## 开放问题
