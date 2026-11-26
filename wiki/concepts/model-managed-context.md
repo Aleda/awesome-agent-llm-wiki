@@ -3,7 +3,7 @@ title: 模型自管理上下文
 type: concept
 summary: 由执行任务的模型自己决定上下文保留、改写和删除什么，取代外部固定规则
 topics: [context, memory]
-aliases: [model-managed context, model-controlled context, context as a file, 上下文即文件, virtual context management, 虚拟上下文管理, 分层记忆, hierarchical memory, LLM OS]
+aliases: [model-managed context, model-controlled context, context as a file, 上下文即文件, virtual context management, 虚拟上下文管理]
 added: 2026-11-27
 status: established
 relations:
@@ -40,7 +40,7 @@ relations:
 - 共识：CLM 和 NVIDIA 两篇都不让完整历史一直留在上下文里，实时上下文都压在几十 K 以内。CLM 在 32K 上限下做主实验（[CLM](../papers/202609-context-language-models.md) §5.1.1¶2）；NVIDIA 作者认为长程任务不需要长上下文，压缩阈值收紧到 16K/12K 时准确率仍大体持平（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3¶4）。
 - 分歧在固定规则够不够用。CLM 作者认为人设计的策略在需要逐字保留或局部更新的任务上会丢信息（[CLM](../papers/202609-context-language-models.md) §3¶2），所以把编辑权交给模型，并把这看作 The Bitter Lesson 的又一例（[CLM](../papers/202609-context-language-models.md) §1¶1）。NVIDIA 作者认为按阈值触发的简单压缩在真实 benchmark 上就够了（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3¶4），压缩丢信息的情形用历史存档加选择性读取补救（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3.1¶4）。两篇证据的任务不同：CLM 的反例来自合成诊断任务 ContextBench，NVIDIA 用的是 SWE-bench、FRAMES 等真实任务，两篇之间没有直接对照。最接近的一组是 CLM 的 Codex 式摘要基线，它与 EoCC 机制相近，CLM 在 BrowseComp-Plus 上比它高 11.4%（相对值）（[CLM](../papers/202609-context-language-models.md) §5.1.1¶2）。
 - MemGPT 与 CLM 方向一致，都把"放什么进上下文"交给模型，区别在范围：MemGPT 把消息历史和文档放在外部存储里，必须显式搬进主存才能被看到（[MemGPT](../papers/202310-memgpt.md) §2¶1）；CLM 在论文附录的相关工作里把 MemGPT 描述为用内存层级连接上下文管理和外部记忆、只允许编辑上下文中一块固定大小的区域，CLM 自己管的是整个实时上下文（[CLM](../papers/202609-context-language-models.md) §4.1¶2）。本库判断：MemGPT 的证据较弱，多会话对话上 GPT-4 加 MemGPT 准确率 92.5%，读递归摘要的 GPT-4 是 32.1%（[MemGPT](../papers/202310-memgpt.md) Tab. 2），但对话短到放得进 GPT-4 Turbo 的窗口，基线却只拿到有损摘要（[MemGPT](../papers/202310-memgpt.md) §3.1.1¶3），没有和完整历史比。
-- 三篇都提醒能力依赖模型：MemGPT 换成 GPT-3.5 后文档问答明显变差（[MemGPT](../papers/202310-memgpt.md) §3.2.1¶6），CLM 里 Qwen3.5-9B 训练前不如摘要 harness（[CLM](../papers/202609-context-language-models.md) §5.2¶4），NVIDIA 论文里 Qwen 3 Coder Next 在最紧的压缩设置下 SWE-bench Verified 几乎全部失败（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) Tab. 9）。两篇也都认为上下文管理最终应进入后训练（[CLM](../papers/202609-context-language-models.md) §6¶2、[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §6¶3），NVIDIA 的版本见[语义状态空间模型](semantic-state-space-model.md)。
+- 三篇都提醒能力依赖模型：MemGPT 换成 GPT-3.5 后文档问答明显变差（[MemGPT](../papers/202310-memgpt.md) §3.2.1¶6），CLM 里 Qwen3.5-9B 训练前不如摘要 harness（[CLM](../papers/202609-context-language-models.md) §5.2¶4），NVIDIA 论文里 Qwen 3 Coder Next 在最紧的压缩设置下 SWE-bench Verified 几乎全部失败（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) Tab. 9）。CLM 和 NVIDIA 两篇也都认为上下文管理最终应进入后训练（[CLM](../papers/202609-context-language-models.md) §6¶2、[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §6¶3），NVIDIA 的版本见[语义状态空间模型](semantic-state-space-model.md)。
 
 ## 开放问题
 

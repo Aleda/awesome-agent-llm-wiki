@@ -62,3 +62,4 @@
 - §2.4¶1: "In MemGPT, events trigger LLM inference"
 - §3¶2: "‘GPT-4 Turbo’ refers to the specific gpt-4-1106-preview model endpoint (context window of 128,000"
 - §3.1.1¶1: "In DMR, the conversational agent is asked a question by the user that explicitly refers back to a prior conversation and has a very narrow expected answer range."
+- §3.2.1¶1: "To evaluate MemGPT’s ability to analyze documents, we benchmark MemGPT against fixed-context baselines on the retriever-reader document QA task"

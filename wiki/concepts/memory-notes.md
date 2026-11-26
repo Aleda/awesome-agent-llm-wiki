@@ -19,10 +19,10 @@ relations:
 
 边界，以及和相关素材的关系（A-MEM、Mem0、MemGPT、Generative Agents 已按全文核对，2026-11-27）：
 
-- 存事实、存观察的记忆不属于这一页。A-MEM 的笔记存的是交互内容本身，加上 LLM 生成的关键词、标签和描述（[A-MEM](../papers/202502-a-mem.md) §3.1¶1）；Mem0 存的是从对话里抽出的事实，写入时由 LLM 选 ADD、UPDATE、DELETE 或 NOOP（[Mem0](../papers/202504-mem0.md) §2.1¶3）。两篇评测的都是能否答对关于过往对话的问题，不是后续任务是否做得更好，所以都不挂到这一页，归入[写入时记忆整合](memory-consolidation.md)。
+- 存事实、存观察的记忆不属于这一页。A-MEM 的笔记存的是交互内容本身，加上 LLM 生成的关键词、标签和描述（[A-MEM](../papers/202502-a-mem.md) §3.1¶1）；Mem0 存的是从对话里抽出的事实，写入时由 LLM 选 ADD、UPDATE、DELETE 或 NOOP（[Mem0](../papers/202504-mem0.md) §2.1¶3）。两篇评测的都是能否答对关于过往对话的问题，没有测后续任务是否因此做得更好，所以都不挂到这一页，归入[写入时记忆整合](memory-consolidation.md)。
 - MemGPT 的自编辑记忆在对话中用来存用户和人设的关键事实（[MemGPT](../papers/202310-memgpt.md) §2.1¶1），论文没有跨任务积累做事经验的实验，所以不挂关系。它的贡献是让模型自己决定上下文里放什么，归入[模型自管理上下文](model-managed-context.md)；这套机制可以用来承载记忆笔记，下文设计空间只作对照。
 - Generative Agents 的反思也是把经验写成文字再读回，但存的是对人和事的推断，服务于角色可信度（[Generative Agents](../papers/202304-generative-agents.md) §6.1¶1），所以单独建为[记忆流与反思](memory-stream-reflection.md)，不挂到这一页。
-- Reflexion 把失败原因写成文字反思，供同一任务的下一次尝试参考；这里的笔记跨任务留存。录入前预计挂为 `extends`，待 Reflexion 全文核对后确认。
+- Reflexion 把失败原因写成文字反思，供同一任务的下一次尝试参考；这里的笔记跨任务留存。Reflexion（2023-03）早于本页现有的全部来源，录入时按全文判断它是首次提出这一想法，还是另一个概念。
 - [模型自管理上下文](model-managed-context.md)里 CLM 的 notes 角色记的是当前任务的进度，任务结束就不再需要，与这里跨任务留存的笔记不同。
 
 ## 演化

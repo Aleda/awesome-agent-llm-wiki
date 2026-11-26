@@ -3,7 +3,7 @@ title: 写入时记忆整合
 type: concept
 summary: 新信息写入时取出相似旧记忆，由 LLM 决定新增、改写、合并或删除，让记忆库保持一致
 topics: [memory]
-aliases: [memory consolidation, write-time memory consolidation, memory evolution, 记忆演化, agentic memory, memory update operations, ADD/UPDATE/DELETE/NOOP, 结构化长期记忆, structured long-term memory, agent memory store]
+aliases: [memory consolidation, write-time memory consolidation, memory evolution, 记忆演化, memory update operations]
 added: 2026-11-27
 status: established
 relations:
@@ -30,14 +30,14 @@ relations:
 
 ## 共识与分歧
 
-- 共识：两篇都反对由开发者预先定好记忆结构，主张由 LLM 在写入时组织记忆（[A-MEM](../papers/202502-a-mem.md) §1¶2、[Mem0](../papers/202504-mem0.md) §2.1¶3）；两篇在写入时都先按向量相似度取近邻，再交给 LLM 判断（[A-MEM](../papers/202502-a-mem.md) §3.2¶1、[Mem0](../papers/202504-mem0.md) §2.1¶3）。
+- 共识：两篇都在写入时先按向量相似度取近邻，再由 LLM 决定怎样改动已有记忆（[A-MEM](../papers/202502-a-mem.md) §3.2¶1、[Mem0](../papers/202504-mem0.md) §2.1¶3）。反对预先定好记忆结构的是 A-MEM 作者，他们正把 Mem0 的图数据库方案当作反例（[A-MEM](../papers/202502-a-mem.md) §1¶2）。
 - 分歧在改旧记忆改到什么程度。A-MEM 只改描述、标签和链接，原始内容保留（[A-MEM](../papers/202502-a-mem.md) §3.3¶1）；Mem0 会删掉被推翻的事实（[Mem0](../papers/202504-mem0.md) §2.1¶3）；Mem0 的图变体为了时间推理改为标记失效（[Mem0](../papers/202504-mem0.md) §2.2¶5），作者报告它在时间类问题上 J 分最高（[Mem0](../papers/202504-mem0.md) Tab. 1）。
 - 整合与全文的取舍：Mem0 在 LOCOMO 上 J 分 66.88，低于把整段对话放进上下文的 72.90，p95 延迟从 17.117 秒降到 1.440 秒（[Mem0](../papers/202504-mem0.md) Tab. 2）。整合省的是读取时的延迟和 token，准确率的上限仍是全文。
-- 本库判断：两篇在 LoCoMo 上的分类结果不能直接对照。Mem0 引用 A-MEM 的 GPT-4o-mini 数字时，三类问题的列名和 A-MEM 原文对不上（[Mem0](../papers/202504-mem0.md) Tab. 1、[A-MEM](../papers/202502-a-mem.md) Tab. 1）；Mem0 重跑 A-MEM 得到的 F1 也低于原文报告值（[Mem0](../papers/202504-mem0.md) Tab. 1）。两篇的数字都是作者自测。
+- 本库判断：两篇在 LoCoMo 上的分类结果不能直接对照。同一组 A-MEM 数字出现过三套类别标签：A-MEM 早期版本、本库缓存的 v11（[A-MEM](../papers/202502-a-mem.md) Tab. 1）和 Mem0 的引用（[Mem0](../papers/202504-mem0.md) Tab. 1）各不相同，详见 A-MEM 页「局限与疑点」；Mem0 重跑 A-MEM 得到的 F1 也低于原文报告值（[Mem0](../papers/202504-mem0.md) Tab. 1）。两篇的数字都是作者自测。
 
 ## 开放问题
 
 - LLM 改写或删除旧记忆时出错的比例有多高？错误一旦写入，后续检索都会读到它，两篇都没有测。
 - 写入时付出的 LLM 调用成本和读取时省下的成本怎样权衡？A-MEM 只报告了单次写入的价格和耗时（[A-MEM](../papers/202502-a-mem.md) §4.3¶2），Mem0 报告的 token 是读取一侧的（[Mem0](../papers/202504-mem0.md) Tab. 2）。
 - 整合存的是事实和描述，评测问的也是"能否答对关于过往对话的问题"（[Mem0](../papers/202504-mem0.md) §3.1¶1）。有了这类记忆，后续任务会不会做得更好，需要[连续任务流评测](streaming-task-evaluation.md)一类的设置来测。
-- 何时写由系统固定（每轮都跑），还是交给模型决定（MemGPT 的做法）？两条路线还没有在同一个 benchmark 上直接对比过。
+- 何时写由系统固定（每轮都跑），还是交给模型决定（MemGPT 的做法）？A-MEM、Mem0 都在 LoCoMo 上和 MemGPT 比过（[A-MEM](../papers/202502-a-mem.md) Tab. 1、[Mem0](../papers/202504-mem0.md) Tab. 1），但存储结构、提示和评分都不同，还没有只改变"何时写"这一项的对照实验。
