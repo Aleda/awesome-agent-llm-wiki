@@ -30,7 +30,9 @@ import re
 import shutil
 import sys
 from datetime import date, datetime
+from html.parser import HTMLParser
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
@@ -40,6 +42,7 @@ from lib.transcribe import (  # noqa: E402
     drop_trailing_hallucination,
     format_anchored,
     transcribe,
+    validate_safe_id,
     write_transcript,
 )
 
@@ -55,6 +58,73 @@ USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 )
+
+_BLOCK_TAGS = {"p", "br", "li", "div", "figure"}
+_COLLAPSE_BLANK_LINES_RE = re.compile(r"\n{3,}")
+
+
+class _ShownotesToText(HTMLParser):
+    """Converts shownotes HTML to plain text (Ruling R24): strips tags,
+    turns block-level tags (`<p>`, `<br>`, `<li>`, ...) into newlines,
+    unescapes entities (handled by `HTMLParser` itself via
+    `convert_charrefs=True`), renders `<a href="url">text</a>` as
+    `text (url)` when `text != url` (and just `url` when they match, or
+    when there's no link text), and drops `<img>` entirely (no alt-text
+    placeholder — an image conveys nothing as plain text here).
+    """
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self._parts: list[str] = []
+        self._link_href: str | None = None
+        self._link_text_parts: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _BLOCK_TAGS:
+            self._parts.append("\n")
+        if tag == "a":
+            href = dict(attrs).get("href")
+            self._link_href = href
+            self._link_text_parts = []
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _BLOCK_TAGS:
+            self._parts.append("\n")
+        # self-closing <img/> etc: nothing else to do, image dropped.
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in _BLOCK_TAGS:
+            self._parts.append("\n")
+        if tag == "a":
+            text = "".join(self._link_text_parts).strip()
+            href = self._link_href
+            if href:
+                self._parts.append(f"{text} ({href})" if text and text != href else href)
+            else:
+                self._parts.append(text)
+            self._link_href = None
+            self._link_text_parts = []
+
+    def handle_data(self, data: str) -> None:
+        if self._link_href is not None:
+            self._link_text_parts.append(data)
+        else:
+            self._parts.append(data)
+
+    def get_text(self) -> str:
+        text = "".join(self._parts)
+        text = _COLLAPSE_BLANK_LINES_RE.sub("\n\n", text)
+        return text.strip()
+
+
+def shownotes_html_to_text(html: str) -> str:
+    """Plain-text rendering of shownotes HTML — see `_ShownotesToText`.
+    Uses only stdlib `html.parser` (no new dependency).
+    """
+    parser = _ShownotesToText()
+    parser.feed(html)
+    parser.close()
+    return parser.get_text()
 
 
 def parse_episode(html: str) -> dict:
@@ -99,8 +169,10 @@ def parse_episode(html: str) -> dict:
 
     # shownotes 是 HTML（可能带 <p>/<img> 标签），description 是纯文本摘要；
     # frontmatter 的 description 字段优先用 shownotes（更完整），没有则退回
-    # description。两者都保留标签/原文，不做二次摘要。
-    description = episode.get("shownotes") or episode.get("description") or ""
+    # description；shownotes 需转成纯文本（Ruling R24），description 本身
+    # 已是纯文本，原样保留。
+    shownotes = episode.get("shownotes")
+    description = shownotes_html_to_text(shownotes) if shownotes else episode.get("description") or ""
 
     return {
         "eid": episode.get("eid", ""),
@@ -131,6 +203,20 @@ def fetch_episode_page(url: str) -> str:
     return r.text
 
 
+_AUDIO_EXT_RE = re.compile(r"^\.[a-z0-9]{2,6}$")
+
+
+def audio_extension(url: str, default: str = ".m4a") -> str:
+    """The audio file extension to save `url`'s download as: derived from
+    `urlparse(url).path` (so a query string like `?token=...` doesn't
+    leak into it), falling back to `default` when the path has no
+    suffix or the suffix doesn't look like a plausible extension
+    (`.` + 2-6 lowercase alphanumeric chars).
+    """
+    suffix = Path(urlparse(url).path).suffix.lower()
+    return suffix if _AUDIO_EXT_RE.match(suffix) else default
+
+
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("url", help="小宇宙单集 URL")
@@ -152,13 +238,15 @@ def main() -> None:
     html = fetch_episode_page(args.url)
     ep = parse_episode(html)
 
-    dest = SOURCES / "podcasts" / args.show / f"{ep['pub_date']}-{ep['eid']}"
+    validate_safe_id(args.show, "--show")
+    eid = validate_safe_id(ep["eid"], "episode eid")
+
+    dest = SOURCES / "podcasts" / args.show / f"{ep['pub_date']}-{eid}"
 
     AUDIO_CACHE.mkdir(parents=True, exist_ok=True)
-    audio_dir = AUDIO_CACHE / f"{args.show}-{ep['pub_date']}-{ep['eid']}"
+    audio_dir = AUDIO_CACHE / f"{args.show}-{ep['pub_date']}-{eid}"
     audio_dir.mkdir(parents=True, exist_ok=True)
-    audio_ext = Path(ep["audio_url"]).suffix or ".m4a"
-    audio_path = audio_dir / f"audio{audio_ext}"
+    audio_path = audio_dir / f"audio{audio_extension(ep['audio_url'])}"
     print(f"下载音频: {ep['audio_url']}")
     download(ep["audio_url"], audio_path)
 
@@ -190,7 +278,7 @@ def main() -> None:
         "fetched": date.today().isoformat(),
     }
     out_path = write_transcript(
-        dest, meta, text, seen_txt=SOURCES / "seen.txt", item_id=ep["eid"], force=args.force
+        dest, meta, text, seen_txt=SOURCES / "seen.txt", item_id=eid, force=args.force
     )
     print(f"完成: {out_path}")
 

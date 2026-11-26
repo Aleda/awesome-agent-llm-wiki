@@ -37,6 +37,39 @@ from pathlib import Path
 DEFAULT_MODEL = "large-v3-turbo"
 MLX_MODEL_REPO = "mlx-community/whisper-large-v3-turbo"
 
+# Slugs/ids used as path components (video id, podcast eid, --channel,
+# --show) must match this — no path separators, no "..", no leading dot
+# or dash. Fix round 1, item 3.
+SAFE_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
+
+
+def validate_safe_id(value: str, label: str) -> str:
+    """Raise `ValueError` if `value` isn't safe to use as a single path
+    component (used for video/podcast ids and `--channel`/`--show`
+    slugs, which all end up in a `sources/...` destination path built
+    from untrusted input — a video title, a CLI argument, or page data).
+    Returns `value` unchanged when it passes.
+    """
+    if ".." in value or not SAFE_ID_RE.match(value):
+        raise ValueError(
+            f"{label} 不合法: {value!r}（只允许字母、数字、`.`、`_`、`-`，"
+            "且不能包含 `..`，不能以非字母数字开头）"
+        )
+    return value
+
+
+def within(path: Path, root: Path) -> bool:
+    """Whether `path` (resolved) lies under `root` (resolved) — a
+    containment check mirroring the TS `within()` helper, used as a
+    last-line-of-defense against a sanitized-looking id that still
+    escapes `sources/` (e.g. via a symlink).
+    """
+    try:
+        path.resolve().relative_to(root.resolve())
+        return True
+    except ValueError:
+        return False
+
 # Chinese-biasing prompt (both engines) — see Task 16 Ruling R23.
 INITIAL_PROMPT_ZH = "以下是普通话的句子，使用简体中文。"
 
@@ -221,16 +254,29 @@ def format_anchored(
     return " ".join(lines).replace(" \n", "\n").strip()
 
 
-_YAML_UNSAFE = re.compile(r'[:#\[\]{}&*!|>\'"%@`]')
+_YAML_UNSAFE = re.compile(r'[:#\[\]{}&*!|>\'"%@`,]')
+_YAML_LOOKS_NUMERIC = re.compile(r"^[-+]?(\d|\.\d)")
+_YAML_KEYWORD = re.compile(r"^(null|~|true|false|yes|no|on|off)$", re.IGNORECASE)
+_YAML_LEADING_INDICATOR = re.compile(r"^[-?:,\[\]{}#&*!|>'\"%@`]")
 
 
 def _yaml_scalar(value) -> str:
     """Render a frontmatter scalar value, quoting strings that contain
-    YAML-significant characters (colons, quotes, etc.) so the written
-    file round-trips through a standard YAML parser.
+    YAML-significant characters (colons, quotes, etc.), that look like a
+    number, that are a YAML boolean/null keyword (case-insensitive), or
+    that start with a YAML indicator character — so the written file
+    round-trips through a standard YAML parser as the original string
+    rather than being reinterpreted as a different type.
     """
     if isinstance(value, str):
-        if _YAML_UNSAFE.search(value) or value == "":
+        needs_quoting = (
+            value == ""
+            or _YAML_UNSAFE.search(value)
+            or _YAML_LOOKS_NUMERIC.match(value)
+            or _YAML_KEYWORD.match(value)
+            or _YAML_LEADING_INDICATOR.match(value)
+        )
+        if needs_quoting:
             return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
         return value
     if isinstance(value, bool):
@@ -267,6 +313,7 @@ def write_transcript(
     seen_txt: Path,
     item_id: str,
     force: bool = False,
+    root: Path | None = None,
 ) -> Path:
     """Write `dest/transcript.md` (frontmatter from `meta` + `body`) and
     append `item_id` to `seen_txt` if not already present.
@@ -275,7 +322,21 @@ def write_transcript(
     an existing `transcript.md` unless `force=True` — the CLI flag for
     that is `--force`, documented as "only for a transcript that was
     never committed".
+
+    `root` (defaults to `seen_txt.parent.parent`, i.e. the repo root
+    given `seen_txt == <root>/sources/seen.txt`) must contain
+    `dest/"sources"` as an ancestor: a last-line-of-defense containment
+    check (mirrors the TS `within()` helper) against a destination path
+    built from an insufficiently sanitized id/slug escaping `sources/`
+    (e.g. `..` segments or a symlink). Raises `ValueError` if it doesn't.
     """
+    effective_root = root if root is not None else seen_txt.parent.parent
+    if not within(dest, effective_root / "sources"):
+        raise ValueError(
+            f"拒绝写入: {dest} 不在 {effective_root / 'sources'} 之下"
+            "（目标路径校验失败，可能是未经过 validate_safe_id 校验的 id/slug）"
+        )
+
     out_path = dest / "transcript.md"
     if out_path.exists() and not force:
         raise FileExistsError(

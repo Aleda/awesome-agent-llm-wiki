@@ -45,6 +45,7 @@ from lib.transcribe import (  # noqa: E402
     drop_trailing_hallucination,
     format_anchored,
     transcribe,
+    validate_safe_id,
     write_transcript,
 )
 
@@ -112,7 +113,7 @@ def audio_files(d: Path) -> list[Path]:
     return [p for p in d.glob("audio.*") if p.suffix not in (".md", ".part", ".ytdl")]
 
 
-def main() -> None:
+def build_arg_parser() -> argparse.ArgumentParser:
     ap = argparse.ArgumentParser()
     ap.add_argument("url", help="视频 URL")
     ap.add_argument("--channel", required=True, help="UP 主 / 频道 slug，用作目录名")
@@ -128,15 +129,28 @@ def main() -> None:
     ap.add_argument("--device", default="auto", choices=["auto", "cpu", "cuda"], help="faster-whisper 推理设备")
     ap.add_argument("--keep-audio", action="store_true", help="转录成功后不删除下载的音频")
     ap.add_argument("--force", action="store_true", help="覆盖已存在的 transcript.md（只用于从未提交过的转录稿）")
-    args = ap.parse_args()
+    return ap
 
-    print(f"抓取元数据: {args.url}")
-    r = run(_ytdlp() + ["-J", "--no-playlist", args.url], timeout=120)
-    if r.returncode != 0:
-        sys.exit(f"yt-dlp 失败:\n{r.stderr[-2000:]}")
-    info = json.loads(r.stdout)
 
-    vid = info["id"]  # B 站: BV 号
+def run_fetch(args, fetch_info=None) -> int:
+    """Does the real work of `main()`, returning a process exit code
+    instead of calling `sys.exit` directly, so tests can drive it without
+    a subprocess. `fetch_info` (test hook) replaces the yt-dlp metadata
+    call with a callable `() -> dict`; defaults to the real yt-dlp call.
+    """
+    validate_safe_id(args.channel, "--channel")
+
+    if fetch_info is None:
+        print(f"抓取元数据: {args.url}")
+        r = run(_ytdlp() + ["-J", "--no-playlist", args.url], timeout=120)
+        if r.returncode != 0:
+            print(f"yt-dlp 失败:\n{r.stderr[-2000:]}", file=sys.stderr)
+            return 1
+        info = json.loads(r.stdout)
+    else:
+        info = fetch_info()
+
+    vid = validate_safe_id(info["id"], "视频 id")  # B 站: BV 号
     upload = info.get("upload_date") or date.today().strftime("%Y%m%d")
     dest = SOURCES / "videos" / args.channel / f"{upload}-{vid}"
 
@@ -180,7 +194,8 @@ def main() -> None:
             r = run(cmd, timeout=300)
             vtts = list(Path(tmp).glob("*.vtt"))
             if not vtts:
-                sys.exit(f"字幕下载失败:\n{r.stderr[-2000:]}")
+                print(f"字幕下载失败:\n{r.stderr[-2000:]}", file=sys.stderr)
+                return 1
             text = parse_vtt(vtts[0])
 
         meta = {**meta_base, "subtitle": f"{lang} ({kind})"}
@@ -188,10 +203,11 @@ def main() -> None:
             dest, meta, text, seen_txt=SOURCES / "seen.txt", item_id=vid, force=args.force
         )
         print(f"完成: {out_path}")
-        return
+        return 0
 
     if not args.transcribe:
-        sys.exit(f"没有可用 CC 字幕。可加 --transcribe 下载音频并本地转录。")
+        print("没有可用 CC 字幕。可加 --transcribe 下载音频并本地转录。", file=sys.stderr)
+        return 2
 
     # ── 无字幕，--transcribe 路径 ──
     AUDIO_CACHE.mkdir(parents=True, exist_ok=True)
@@ -204,10 +220,12 @@ def main() -> None:
         timeout=1800,
     )
     if r2.returncode != 0:
-        sys.exit(f"音频下载失败:\n{r2.stderr[-2000:]}")
+        print(f"音频下载失败:\n{r2.stderr[-2000:]}", file=sys.stderr)
+        return 1
     found = audio_files(audio_dir)
     if not found:
-        sys.exit(f"音频文件未生成于 {audio_dir}")
+        print(f"音频文件未生成于 {audio_dir}", file=sys.stderr)
+        return 1
     audio_path = found[0]
 
     orig = info.get("language") or ""
@@ -238,6 +256,12 @@ def main() -> None:
 
     if not args.keep_audio:
         shutil.rmtree(audio_dir, ignore_errors=True)
+    return 0
+
+
+def main() -> None:
+    args = build_arg_parser().parse_args()
+    sys.exit(run_fetch(args))
 
 
 if __name__ == "__main__":

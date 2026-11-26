@@ -18,6 +18,7 @@ from lib.transcribe import (
     drop_trailing_hallucination,
     fmt_ts,
     format_anchored,
+    validate_safe_id,
     write_transcript,
 )
 
@@ -136,3 +137,105 @@ def test_write_transcript_frontmatter_contains_meta_keys(tmp_path):
     text = out_path.read_text(encoding="utf-8")
     for key in ("title", "url", "show", "upload_date", "duration_minutes", "description", "subtitle", "fetched"):
         assert f"{key}:" in text
+
+
+# ---------------------------------------------------------------------------
+# Fix round 1: id sanitization (item 3)
+# ---------------------------------------------------------------------------
+
+
+def test_validate_safe_id_rejects_path_traversal():
+    with pytest.raises(ValueError):
+        validate_safe_id("../../x", "eid")
+
+
+def test_validate_safe_id_rejects_path_separator():
+    with pytest.raises(ValueError):
+        validate_safe_id("a/b", "channel")
+
+
+def test_validate_safe_id_accepts_normal_slug():
+    assert validate_safe_id("BV1wd1wzkEU6", "video id") == "BV1wd1wzkEU6"
+    assert validate_safe_id("demo-channel_1", "channel") == "demo-channel_1"
+
+
+def test_write_transcript_rejects_dest_outside_sources(tmp_path):
+    # A crafted dest that escapes sources/ (e.g. via a bad id/slug that
+    # wasn't run through validate_safe_id) must be rejected even though
+    # write_transcript itself doesn't know how dest was built.
+    seen_path = tmp_path / "sources" / "seen.txt"
+    outside_dest = tmp_path / "sources" / ".." / "etc" / "evil"
+    meta = {"title": "x"}
+    with pytest.raises(ValueError):
+        write_transcript(outside_dest, meta, "[00:00:00] x\n", seen_txt=seen_path, item_id="x")
+
+
+def test_write_transcript_accepts_dest_inside_sources(tmp_path):
+    seen_path = tmp_path / "sources" / "seen.txt"
+    dest = tmp_path / "sources" / "videos" / "demo" / "20261101-abc"
+    meta = {"title": "x"}
+    out_path = write_transcript(dest, meta, "[00:00:00] x\n", seen_txt=seen_path, item_id="abc")
+    assert out_path.exists()
+
+
+# ---------------------------------------------------------------------------
+# Fix round 1: YAML scalar quoting (item 5)
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "123",
+        "-1",
+        "+1",
+        "1.5",
+        ".5",
+        "null",
+        "Null",
+        "NULL",
+        "~",
+        "true",
+        "True",
+        "false",
+        "False",
+        "yes",
+        "Yes",
+        "no",
+        "No",
+        "on",
+        "On",
+        "off",
+        "Off",
+        "-leading-dash",
+        "?leading-question",
+        ":leading-colon",
+        ",leading-comma",
+        "[leading-bracket",
+        "]leading-bracket",
+        "{leading-brace",
+        "}leading-brace",
+        "#leading-hash",
+        "&leading-amp",
+        "*leading-star",
+        "!leading-bang",
+        "|leading-pipe",
+        ">leading-gt",
+        "'leading-quote",
+        '"leading-dquote',
+        "%leading-pct",
+        "@leading-at",
+        "`leading-backtick",
+    ],
+)
+def test_write_transcript_yaml_roundtrip_edge_cases(tmp_path, value):
+    yaml = pytest.importorskip("yaml")
+    dest = tmp_path / "sources" / "videos" / "demo" / "20261101-edge"
+    meta = {"title": value}
+    out_path = write_transcript(
+        dest, meta, "[00:00:00] x\n", seen_txt=tmp_path / "sources" / "seen.txt", item_id="edge"
+    )
+    text = out_path.read_text(encoding="utf-8")
+    frontmatter_body = text.split("---")[1]
+    parsed = yaml.safe_load(frontmatter_body)
+    assert parsed["title"] == value, f"round-trip failed for {value!r}: got {parsed['title']!r}"
