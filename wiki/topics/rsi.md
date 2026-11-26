@@ -30,13 +30,16 @@ order: 3
 
 ### 度量与治理
 
-- 研究加速的度量：用什么指标判断 AI 已经实质性加速了 AI 研究。
-- 闭环中的人类控制点：哪些环节保留人工审核，能否协调放缓。
+- [AI 研发加速度量](../concepts/ai-rd-uplift-measurement.md)：用什么指标判断 AI 已经实质性加速了 AI 研究；外部基准、内部产出量、受控研究任务各能说明什么。
+- [AI 研发中的人类瓶颈](../concepts/human-bottleneck-in-ai-rd.md)：执行交给 AI 后，人工审查和定研究方向（研究品味）成为整体速度的上限，也是闭环中人保留的控制点。
+- [可验证的协调放缓](../concepts/verifiable-coordinated-slowdown.md)：多家前沿实验室在能相互核实的前提下同时放缓或暂停。
 
 ## 关键争论
 
 - 闭环 RSI 是否等于 takeoff：AI 参与改进自身，和能力快速且难以控制地增长，中间还隔着哪些条件，如算力、数据和评测瓶颈。
 - 评测器瓶颈：现有自我改进方法依赖可以自动判定的分数，在没有可靠评测器的任务上是否成立。
-- 加速有多少来自 AI：研究效率的提升里，有多少能归因于 AI 系统本身，多少来自工具链和人的组织方式。
+- 加速有多少来自 AI：研究效率的提升里，有多少能归因于 AI 系统本身，多少来自工具链和人的组织方式。Anthropic 用合入代码占比和人均代码量等内部数据论证加速已经发生（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §2¶4），这些指标量的是产出，作者也承认行数高估生产率（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §2¶5），见[AI 研发加速度量](../concepts/ai-rd-uplift-measurement.md#共识与分歧)。
+- 研究品味能否自动化：反方认为仍在人手里的选题判断最重要（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶1）；Anthropic 认为即使不能自动化，加速也会复利（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶3），并设想了从趋势停滞到完全递归自我改进的三种前景（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶7），见[AI 研发中的人类瓶颈](../concepts/human-bottleneck-in-ai-rd.md#三种前景)。
+- 放缓是否可行：Anthropic 认为单方面暂停只会换掉领跑者（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §5¶4），主张以可核实为前提的协调放缓（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §5¶2），见[可验证的协调放缓](../concepts/verifiable-coordinated-slowdown.md)。
 
 ## 最近进展

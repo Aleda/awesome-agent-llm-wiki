@@ -17,9 +17,21 @@ type: raw
 
 Artificial Analysis Long Context Reasoning，Artificial Analysis 发布的长上下文推理 benchmark：100 道人工编写的题目，每题要跨一组平均约 100K token 的真实文档综合证据、多步推理作答。
 
+## Amdahl's law
+
+Amdahl 定律：系统中只有一部分被加速时，整体加速受未被加速部分所占的比例限制。Anthropic 2026-09 的 blog 用它说明 AI 研发局部加速后瓶颈会转移到人工审查等环节。
+
 ## BrowseComp-Plus
 
 在 OpenAI 的 BrowseComp 基础上构建的深度研究类 benchmark，为问题配了一个固定的文档语料库，agent 只在这个语料库里检索。语料固定后结果可以复现，也能把检索器的效果和 agent 的推理能力分开评估。
+
+## Claude Code
+
+Anthropic 的编程 agent，2025-02 以 research preview 形式发布，能在终端里读写代码、运行命令。
+
+## Claude Mythos Preview
+
+Anthropic 以预览形式提供的模型，2026 年发布。Anthropic 2026-09 的 blog 中训练代码提速、研究下一步判断和员工问卷等内部指标都用到它。
 
 ## ContextBench
 
@@ -57,6 +69,10 @@ Heilbronn 三角形问题：在单位区域内放置 n 个点，使任意三点�
 
 多文档长上下文问答 benchmark，1,600 道题，一道题通常依赖多份完整的财报、法律案例或论文，中英文都有，证据有意分散在多份文档里。
 
+## METR time horizon
+
+METR 提出的能力度量：在一组任务上，模型能以 50% 可靠度完成的任务，对应熟练的人需要多长时间。Anthropic 2026-09 的 blog 引述这一时长约每四个月翻一番。
+
 ## mini-swe-agent
 
 SWE-agent 团队发布的极简软件工程 agent harness：每轮只发一个 Bash 命令，动作和结果逐条追加进对话。You don't need long context 论文以它为基础 harness，并推广出面向非编程任务的 mini-agent。
@@ -72,6 +88,10 @@ Needle in a Haystack，在长篇无关文本的指定深度插入一句目标事
 ## prefix-reuse FLOPs
 
 CLM 论文定义的推理成本指标：按带前缀缓存的推理服务计算整条轨迹的理论 FLOPs，包括解码、预填，以及上下文中段被编辑后从第一个不匹配位置起的重预填。
+
+## Project Glasswing
+
+Anthropic 的网络安全项目，用 Claude Mythos Preview 在重要软件系统中查找漏洞。
 
 ## Qwen
 
