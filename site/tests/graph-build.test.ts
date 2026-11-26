@@ -533,3 +533,27 @@ describe('buildGraph source attachment fallback', () => {
     expect(at('wiki/concepts/base').r).toBe(18);
   });
 });
+
+describe('buildGraph root flag and L2 card spacing (Task 11 fix round 1)', () => {
+  test('only the root topic carries root: true', () => {
+    const g = buildGraph(idx, {});
+    expect(g.nodes.filter((n) => n.root === true).map((n) => n.id)).toEqual(['wiki/topics/agent']);
+    expect(g.nodes.every((n) => n.root === undefined || n.root === true)).toBe(true);
+  });
+
+  test('sources are spaced for L2 cards: nearest other source is at least ~84 world units away', () => {
+    // CARD_W / LEVEL_SCALE[2] = 220 / 2.6 ≈ 84.6 world units: the collision radius (≈ 42 per source) keeps card centres about one card width apart.
+    const g = buildGraph(synthIndex(400), {});
+    const src = g.nodes.filter((n) => ['paper', 'blog', 'video', 'podcast'].includes(n.t));
+    const nearest = src.map((a) => Math.min(...src.filter((b) => b !== a).map((b) => Math.hypot(a.x - b.x, a.y - b.y))));
+    nearest.sort((p, q) => p - q);
+    expect(nearest[Math.floor(nearest.length / 10)]).toBeGreaterThanOrEqual(80);
+  });
+
+  test('entities keep a small collision radius and stay near their source', () => {
+    const g = buildGraph(idx, {});
+    const paper = g.nodes.find((n) => n.id === 'wiki/papers/202611-sample-paper')!;
+    const entity = g.nodes.find((n) => n.id === 'wiki/entities/demo-org')!;
+    expect(Math.hypot(paper.x - entity.x, paper.y - entity.y)).toBeLessThan(120);
+  });
+});

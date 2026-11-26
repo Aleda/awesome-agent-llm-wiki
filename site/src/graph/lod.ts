@@ -49,13 +49,13 @@ export function lodAlpha(k: number): LodAlpha {
  */
 export const MIN_SCREEN_R = { root: 34, topic: 24, concept: 4 } as const;
 
-/** The root topic is the only topic at (0, 0): build.ts pins it there and puts every other topic on the radius-1000 ring. */
-export function isRootNode(n: Pick<GNode, 't' | 'x' | 'y'>): boolean {
-  return n.t === 'topic' && n.x === 0 && n.y === 0;
+/** The root topic ("Agent"), flagged `root: true` by build.ts. */
+export function isRootNode(n: Pick<GNode, 'root'>): boolean {
+  return n.root === true;
 }
 
 /** Drawn droplet radius in CSS px at zoom `k`. Task 12's circle hit test should divide this by `k` to get world units. */
-export function screenRadius(n: Pick<GNode, 't' | 'x' | 'y' | 'r'>, k: number): number {
+export function screenRadius(n: Pick<GNode, 't' | 'r' | 'root'>, k: number): number {
   const base = n.r * k;
   if (n.t === 'topic') return Math.max(base, isRootNode(n) ? MIN_SCREEN_R.root : MIN_SCREEN_R.topic);
   if (n.t === 'concept') return Math.max(base, MIN_SCREEN_R.concept);

@@ -11,6 +11,8 @@
   --c-video: #be123c; /* rose */
   --c-podcast: #6d28d9; /* violet */
   --c-entity: #475569; /* slate */
+  --c-ink: #0f172a; /* graph label / card text */
+  --c-muted: rgba(15, 23, 42, 0.6); /* graph secondary text */
 
   --card-bg: #ffffff;
   --card-border: rgba(15, 23, 42, 0.1);
@@ -25,6 +27,8 @@
   --c-video: #fda4af;
   --c-podcast: #c4b5fd;
   --c-entity: #cbd5e1;
+  --c-ink: #e2e8f0;
+  --c-muted: rgba(226, 232, 240, 0.68);
 
   --card-bg: #1e2230;
   --card-border: rgba(226, 232, 240, 0.12);

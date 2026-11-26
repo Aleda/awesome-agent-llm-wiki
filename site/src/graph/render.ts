@@ -13,7 +13,8 @@
  *     is on screen. Source edges fade in with L1; `by` edges only when
  *     `showEntities`. Edges touching the hovered node are drawn on top.
  *  3. Droplets: translucent radial-gradient bodies (glassy centre, denser
- *     rim), a soft shadow in the type colour, a specular highlight and a
+ *     rim), a soft glow in the type colour (a sprite pre-rendered per theme,
+ *     skipped while `moving`), a specular highlight and a
  *     faint caustic crescent. Gradients live in unit space and are built
  *     once per theme; each droplet is placed with `setTransform`, so no
  *     per-node gradient is allocated.
@@ -41,6 +42,8 @@ export interface ViewState {
   showEntities?: boolean;
   /** Neighbours of `hover` (Task 12 `neighbors`); they stay at full opacity while the rest dim to 0.15. */
   neighbors?: Set<PageId>;
+  /** True while the camera is panning/zooming/flying (Task 12): droplet glows are skipped to keep frames cheap. */
+  moving?: boolean;
   /** Animation clock in ms, normally the rAF timestamp; defaults to `performance.now()`. */
   time?: number;
 }
@@ -166,6 +169,18 @@ interface Tone {
   rim: string;
   glow: string;
   body: CanvasGradient | null;
+  /** Pre-rendered soft glow (see `glowSprite`), or null without a 2D context. */
+  halo: CanvasImageSource | null;
+}
+
+/** Precomputed `ctx.font` strings, so the hot loop never builds a font string. */
+interface Fonts {
+  root: string;
+  topic: string;
+  concept: string;
+  sub: string;
+  small: string;
+  cardTitle: string;
 }
 
 interface Theme {
@@ -179,7 +194,7 @@ interface Theme {
   cardShadow: string;
   specular: CanvasGradient | null;
   caustic: string;
-  font: string;
+  fonts: Fonts;
 }
 
 const FONT_STACK = 'system-ui, -apple-system, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif';
@@ -191,6 +206,62 @@ function cssVar(name: string): string {
   } catch {
     return '';
   }
+}
+
+/** An offscreen canvas of `w` × `h` device px with its 2D context, or null where canvases are unavailable (happy-dom). */
+function offscreen(w: number, h: number): [HTMLCanvasElement, CanvasRenderingContext2D] | null {
+  try {
+    const cv = document.createElement('canvas');
+    cv.width = w;
+    cv.height = h;
+    const cx = cv.getContext('2d');
+    return cx ? [cv, cx] : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Glow sprite size in px and the fraction of its half-width where the droplet rim sits. */
+const GLOW_PX = 128;
+export const GLOW_RIM = 0.62;
+
+/**
+ * Soft glow in `rgb` at peak alpha `a`, rendered once per theme: flat
+ * under the droplet, then a smooth Gaussian-like falloff outside the rim.
+ * Replaces a per-draw `shadowBlur`, which is the costliest canvas op at
+ * high DPR.
+ */
+function glowSprite(rgb: RGB, a: number): CanvasImageSource | null {
+  const o = offscreen(GLOW_PX, GLOW_PX);
+  if (!o) return null;
+  const [cv, cx] = o;
+  const h = GLOW_PX / 2;
+  const gr = cx.createRadialGradient(h, h, 0, h, h, h);
+  const stops: [number, number][] = [[0, 1], [GLOW_RIM, 0.9], [0.72, 0.55], [0.82, 0.25], [0.91, 0.08], [1, 0]];
+  for (const [o2, f] of stops) gr.addColorStop(o2, rgba(rgb, a * f));
+  cx.fillStyle = gr;
+  cx.fillRect(0, 0, GLOW_PX, GLOW_PX);
+  return cv;
+}
+
+/** Card drop shadow, padding `CARD_PAD` px around the card, rendered once per theme and DPR. */
+const CARD_PAD = 24;
+function cardShadowSprite(color: string, dpr: number): CanvasImageSource | null {
+  const o = offscreen(Math.ceil((CARD_W + 2 * CARD_PAD) * dpr), Math.ceil((CARD_H + 2 * CARD_PAD) * dpr));
+  if (!o) return null;
+  const [cv, cx] = o;
+  cx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  cx.shadowColor = color;
+  cx.shadowBlur = 14 * dpr;
+  cx.shadowOffsetY = 3 * dpr;
+  // Draw the shape far off-canvas and keep only its shadow, so the sprite is shadow-only.
+  const off = 10000;
+  cx.shadowOffsetX = off * dpr;
+  cx.beginPath();
+  roundRectPath(cx, CARD_PAD - off, CARD_PAD, CARD_W, CARD_H, 10);
+  cx.fillStyle = '#000';
+  cx.fill();
+  return cv;
 }
 
 function readTheme(ctx: CanvasRenderingContext2D | null): Theme {
@@ -211,7 +282,8 @@ function readTheme(ctx: CanvasRenderingContext2D | null): Theme {
       body.addColorStop(0.85, rgba(rgb, 0.46));
       body.addColorStop(1, rgba(rgb, 0.55));
     }
-    return { rgb, solid: rgba(rgb, 1), rim: rgba(rgb, 0.6), glow: rgba(rgb, dark ? 0.55 : 0.35), body };
+    const glowA = dark ? 0.5 : 0.32;
+    return { rgb, solid: rgba(rgb, 1), rim: rgba(rgb, 0.6), glow: rgba(rgb, glowA), body, halo: ctx ? glowSprite(rgb, glowA) : null };
   });
   let specular: CanvasGradient | null = null;
   if (ctx) {
@@ -220,18 +292,26 @@ function readTheme(ctx: CanvasRenderingContext2D | null): Theme {
     specular.addColorStop(1, 'rgba(255,255,255,0)');
   }
   const cardBg = cssVar('--card-bg') || (dark ? '#1e2230' : '#ffffff');
+  const ff = cssVar('--sl-font') || FONT_STACK;
   return {
     dark,
     tones,
-    ink: dark ? '#e2e8f0' : '#0f172a',
-    muted: dark ? 'rgba(226,232,240,0.68)' : 'rgba(15,23,42,0.6)',
+    ink: cssVar('--c-ink') || (dark ? '#e2e8f0' : '#0f172a'),
+    muted: cssVar('--c-muted') || (dark ? 'rgba(226,232,240,0.68)' : 'rgba(15,23,42,0.6)'),
     halo: rgba(parseColor(cardBg) ?? (dark ? [30, 34, 48] : WHITE), 0.85),
     cardBg,
     cardBorder: cssVar('--card-border') || (dark ? 'rgba(226,232,240,0.12)' : 'rgba(15,23,42,0.1)'),
     cardShadow: dark ? 'rgba(0,0,0,0.45)' : 'rgba(15,23,42,0.14)',
     specular,
     caustic: dark ? 'rgba(255,255,255,0.22)' : 'rgba(255,255,255,0.45)',
-    font: cssVar('--sl-font') || FONT_STACK,
+    fonts: {
+      root: `600 20px ${ff}`,
+      topic: `600 18px ${ff}`,
+      concept: `500 13px ${ff}`,
+      sub: `12px ${ff}`,
+      small: `11px ${ff}`,
+      cardTitle: `600 13px ${ff}`,
+    },
   };
 }
 
@@ -407,8 +487,6 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
   const pts = new Float64Array(DROPLET_POINTS * 2);
   const dbuf = new Float64Array(2);
   const cards: (CardText | undefined)[] = new Array(N);
-  let okFor: Set<PageId> | null = null;
-  let okEntities = false;
   let frame = 0;
   let nVis = 0;
   let rx0 = 0;
@@ -418,6 +496,17 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
   let cam: Camera = { x: 0, y: 0, k: 1 };
   let clock = 0;
   let reduced = false;
+  let moving = false;
+  let cardShadow: CanvasImageSource | null = null;
+  let cardShadowDpr = 0;
+  /** Last font assigned to the context; `ctx.font` is only set when it changes (reset when a resize clears the context state). */
+  let curFont = '';
+  const font = (c: CanvasRenderingContext2D, f: string): void => {
+    if (f !== curFont) {
+      c.font = f;
+      curFont = f;
+    }
+  };
 
   const place = (i: number): void => {
     if (placed[i] === frame) return;
@@ -525,23 +614,19 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
       return;
     }
     const k = kind[i];
-    c.setTransform(dpr * R, 0, 0, dpr * R, dpr * sx, dpr * sy);
     c.globalAlpha = alpha;
-    const blur = emphasis ? 24 : k === KIND_ROOT ? 28 : k === KIND_TOPIC ? 18 : k === KIND_CONCEPT && R >= 10 ? 10 : 0;
-    if (blur > 0) {
-      c.shadowColor = tn.glow;
-      c.shadowBlur = blur * dpr;
-      c.shadowOffsetY = (k <= KIND_TOPIC ? 4 : 2) * dpr;
+    // Glow: the pre-rendered sprite, its rim ring matched to the droplet rim, nudged down a little like a drop shadow. Skipped while the camera moves.
+    if (!moving && tn.halo && (emphasis || k <= KIND_TOPIC || (k === KIND_CONCEPT && R >= 10))) {
+      const ext = (R / GLOW_RIM) * (emphasis ? 1.12 : 1);
+      const dy = k <= KIND_TOPIC ? 4 : 2;
+      c.setTransform(dpr, 0, 0, dpr, 0, 0);
+      c.drawImage(tn.halo, sx - ext, sy - ext + dy, 2 * ext, 2 * ext);
     }
+    c.setTransform(dpr * R, 0, 0, dpr * R, dpr * sx, dpr * sy);
     c.beginPath();
     outline(c, i);
     if (tn.body) c.fillStyle = tn.body;
     c.fill();
-    if (blur > 0) {
-      c.shadowColor = 'rgba(0,0,0,0)';
-      c.shadowBlur = 0;
-      c.shadowOffsetY = 0;
-    }
     c.lineWidth = (emphasis ? 2 : 1) / R;
     c.strokeStyle = tn.rim;
     c.stroke();
@@ -569,9 +654,9 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     let ct = cards[i];
     if (ct) return ct;
     const n = nodes[i];
-    c.font = `600 13px ${theme.font}`;
+    font(c, theme.fonts.cardTitle);
     const title = ellipsize(c, n.l, CARD_W - 40 - 12);
-    c.font = `11px ${theme.font}`;
+    font(c, theme.fonts.small);
     const metaRaw = [n.o, n.d].filter((v) => v).join(' · ') || TYPE_LABEL[n.t];
     ct = { title, meta: ellipsize(c, metaRaw, CARD_W - 28), summary: ellipsize(c, n.s, CARD_W - 28) };
     cards[i] = ct;
@@ -585,16 +670,11 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     const y0 = Math.round(pos[2 * i + 1] - CARD_H / 2);
     const text = cardText(c, i);
     c.globalAlpha = alpha;
-    c.shadowColor = theme.cardShadow;
-    c.shadowBlur = (emphasis ? 22 : 14) * dpr;
-    c.shadowOffsetY = 3 * dpr;
+    if (cardShadow) c.drawImage(cardShadow, x0 - CARD_PAD, y0 - CARD_PAD, CARD_W + 2 * CARD_PAD, CARD_H + 2 * CARD_PAD);
     c.beginPath();
     roundRectPath(c, x0, y0, CARD_W, CARD_H, 10);
     c.fillStyle = theme.cardBg;
     c.fill();
-    c.shadowColor = 'rgba(0,0,0,0)';
-    c.shadowBlur = 0;
-    c.shadowOffsetY = 0;
     c.lineWidth = emphasis ? 1.5 : 1;
     c.strokeStyle = emphasis ? tn.rim : theme.cardBorder;
     c.stroke();
@@ -618,10 +698,10 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     // Text rows.
     c.textAlign = 'left';
     c.textBaseline = 'middle';
-    c.font = `600 13px ${theme.font}`;
+    font(c, theme.fonts.cardTitle);
     c.fillStyle = theme.ink;
     c.fillText(text.title, x0 + 40, y0 + 18);
-    c.font = `11px ${theme.font}`;
+    font(c, theme.fonts.small);
     c.fillStyle = theme.muted;
     c.fillText(text.meta, x0 + 16, y0 + 37);
     c.fillText(text.summary, x0 + 16, y0 + 52);
@@ -639,6 +719,11 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     cam = camera;
     clock = (st.time ?? (typeof performance !== 'undefined' ? performance.now() : Date.now())) / 1000;
     reduced = st.reducedMotion;
+    moving = st.moving === true;
+    if (cardShadowDpr !== dpr) {
+      cardShadow = cardShadowSprite(theme.cardShadow, dpr);
+      cardShadowDpr = dpr;
+    }
     const k = cam.k;
     const a = lodAlpha(k);
     const l1 = a.conceptLabel;
@@ -752,17 +837,17 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
         c.fillStyle = theme.tones[0].solid;
         let sub = y + R + 8;
         if (kd === KIND_ROOT) {
-          c.font = `600 20px ${theme.font}`;
+          font(c, theme.fonts.root);
           c.textBaseline = 'middle';
           label(n.l, x, y);
         } else {
-          c.font = `600 18px ${theme.font}`;
+          font(c, theme.fonts.topic);
           c.textBaseline = 'top';
           label(n.l, x, sub);
           sub += 23;
         }
         if (subLabel[i]) {
-          c.font = `12px ${theme.font}`;
+          font(c, theme.fonts.sub);
           c.textBaseline = 'top';
           c.fillStyle = theme.muted;
           label(subLabel[i], x, sub);
@@ -771,7 +856,7 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
         const alpha = (kd === KIND_CONCEPT ? l1 : lodEntity) * dim[i];
         if (alpha < 0.01) continue;
         c.globalAlpha = alpha;
-        c.font = kd === KIND_CONCEPT ? `500 13px ${theme.font}` : `11px ${theme.font}`;
+        font(c, kd === KIND_CONCEPT ? theme.fonts.concept : theme.fonts.small);
         c.textBaseline = 'top';
         c.fillStyle = kd === KIND_CONCEPT ? theme.ink : theme.muted;
         label(n.l, x, y + R + 5);
@@ -779,7 +864,7 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     }
 
     // 4c. Relation labels on the hovered node's edges.
-    c.font = `11px ${theme.font}`;
+    font(c, theme.fonts.small);
     c.textAlign = 'center';
     c.textBaseline = 'middle';
     let nBox = 0;
@@ -792,18 +877,17 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
       const my = (geo[1] + 2 * geo[3] + geo[5]) / 4;
       const s = REL_NAMES[r];
       const w = c.measureText(s).width + 12;
-      // Greedy de-overlap: skip a pill that would cover one already placed.
+      // Greedy de-overlap: skip a pill that would cover one already placed; stop at MAX_PILLS.
+      if (nBox >= MAX_PILLS) break;
       let clash = false;
       for (let b = 0; b < nBox && !clash; b++) {
         clash = Math.abs(boxes[4 * b] - mx) < (boxes[4 * b + 2] + w) / 2 && Math.abs(boxes[4 * b + 1] - my) < 19;
       }
       if (clash) continue;
-      if (nBox < MAX_PILLS) {
-        boxes[4 * nBox] = mx;
-        boxes[4 * nBox + 1] = my;
-        boxes[4 * nBox + 2] = w;
-        nBox++;
-      }
+      boxes[4 * nBox] = mx;
+      boxes[4 * nBox + 1] = my;
+      boxes[4 * nBox + 2] = w;
+      nBox++;
       c.globalAlpha = pillAlpha;
       c.beginPath();
       roundRectPath(c, mx - w / 2, my - 9, w, 18, 9);
@@ -822,7 +906,7 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
       c.globalAlpha = 1;
       c.lineWidth = 3.5;
       c.strokeStyle = theme.halo;
-      c.font = kd === KIND_ROOT ? `600 20px ${theme.font}` : kd === KIND_TOPIC ? `600 18px ${theme.font}` : kd === KIND_CONCEPT ? `500 13px ${theme.font}` : `11px ${theme.font}`;
+      font(c, kd === KIND_ROOT ? theme.fonts.root : kd === KIND_TOPIC ? theme.fonts.topic : kd === KIND_CONCEPT ? theme.fonts.concept : theme.fonts.small);
       c.textBaseline = kd === KIND_ROOT ? 'middle' : 'top';
       c.fillStyle = kd <= KIND_TOPIC ? theme.tones[0].solid : kd === KIND_CONCEPT ? theme.ink : theme.muted;
       const y = pos[2 * hi + 1];
@@ -860,6 +944,7 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
       dpr = ratio > 0 && Number.isFinite(ratio) ? ratio : 1;
       canvas.width = Math.max(1, Math.round(vw * dpr));
       canvas.height = Math.max(1, Math.round(vh * dpr));
+      curFont = '';
       if (canvas.style) {
         canvas.style.width = `${vw}px`;
         canvas.style.height = `${vh}px`;
@@ -868,6 +953,8 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     refreshTheme() {
       theme = readTheme(ctx);
       cards.fill(undefined);
+      cardShadowDpr = 0;
+      curFont = '';
     },
   };
 }

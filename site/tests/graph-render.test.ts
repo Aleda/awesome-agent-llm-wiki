@@ -284,6 +284,7 @@ function recordingCanvas(): { canvas: HTMLCanvasElement; calls: Call[] } {
     },
     set(target, prop, value) {
       target[prop] = value;
+      calls.push({ m: `set:${String(prop)}`, args: [value], fillStyle: target.fillStyle, strokeStyle: target.strokeStyle, alpha: target.globalAlpha as number });
       return true;
     },
   });
@@ -412,4 +413,51 @@ describe('renderer', () => {
     r.draw(fitNode(g.nodes[1], { w: 800, h: 600 }, 1), stateOf({ focus: g.nodes[1].id }));
     expect(calls.some((c) => c.m === 'setLineDash')).toBe(true);
   });
+
+  test('no per-draw shadowBlur on the main canvas; glow comes from sprites and is skipped while moving', () => {
+    // Give the renderer working offscreen canvases so it builds glow sprites.
+    const realCreate = document.createElement.bind(document);
+    const spy = vi.spyOn(document, 'createElement').mockImplementation(((tag: string) =>
+      tag === 'canvas' ? recordingCanvas().canvas : realCreate(tag)) as typeof document.createElement);
+    try {
+      const { canvas, calls } = recordingCanvas();
+      const r = createRenderer(canvas, g);
+      r.resize(1000, 1000, 2);
+      const cam = fitNode(g.nodes[0], { w: 1000, h: 1000 }, 1);
+      r.draw(cam, stateOf());
+      expect(calls.some((c) => c.m === 'set:shadowBlur' && Number(c.args[0]) > 0)).toBe(false);
+      const still = calls.filter((c) => c.m === 'drawImage').length;
+      expect(still).toBeGreaterThan(0);
+      calls.length = 0;
+      r.draw(cam, stateOf({ moving: true }));
+      expect(calls.filter((c) => c.m === 'drawImage').length).toBe(0);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  test('ctx.font is only assigned when it changes', () => {
+    const { canvas, calls } = recordingCanvas();
+    const r = createRenderer(canvas, g);
+    r.resize(1000, 1000, 1);
+    r.draw(fitNode(g.nodes[0], { w: 1000, h: 1000 }, 0), stateOf());
+    const fonts = calls.filter((c) => c.m === 'set:font').map((c) => String(c.args[0]));
+    for (let i = 1; i < fonts.length; i++) expect(fonts[i]).not.toBe(fonts[i - 1]);
+  });
+
+  test('ink and muted text colours come from --c-ink / --c-muted', () => {
+    document.documentElement.style.setProperty('--c-ink', '#010203');
+    try {
+      const concept = g.nodes.find((n) => n.id === 'wiki/concepts/context-compaction')!;
+      const { canvas, calls } = recordingCanvas();
+      const r = createRenderer(canvas, g);
+      r.resize(800, 600, 1);
+      r.draw(fitNode(concept, { w: 800, h: 600 }, 1), stateOf());
+      const label = calls.find((c) => c.m === 'fillText' && c.args[0] === concept.l)!;
+      expect(label.fillStyle).toBe('#010203');
+    } finally {
+      document.documentElement.style.removeProperty('--c-ink');
+    }
+  });
 });
+

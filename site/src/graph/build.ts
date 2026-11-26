@@ -17,13 +17,16 @@
  * - A source with at least one concept relation attaches to its single
  *   strongest concept (priority: proposes > extends > challenges >
  *   supports > alternative-to > applies; ties broken by concept id),
- *   distance 90. A source with no concept relation attaches to the
- *   target of its `explains`/`responds` edge if it has one (distance 90),
- *   else to its first topic (distance 90), else to root.
- * - `by` edges (source -> entity) use link force at default distance and
+ *   distance 120. A source with no concept relation attaches to the
+ *   target of its `explains`/`responds` edge if it has one (distance 120),
+ *   else to its first topic (distance 120), else to root.
+ * - `by` edges (source -> entity) use link force at distance 90 and
  *   the sentinel relation index `REL_BY = REL.length` (entities have no
  *   `Rel`); entities are otherwise only pulled toward their one source.
- * - Every node gets a collision force (radius `r + 12`).
+ * - Every node gets a collision force (radius `r + 12`); source nodes
+ *   use at least `SOURCE_COLLIDE_RADIUS` (≈ 42, half an L2 card's width
+ *   in world units) so their L2 cards do not pile on top of each other.
+ *   Entities keep the small `r + 12`.
  * - Random source `d3.randomLcg(42)`; simulation runs a fixed 300 ticks
  *   (no live timer — this all happens at build time, once). Nodes present
  *   in `prev` (previous build's coordinates) start from their old
@@ -57,6 +60,8 @@ export interface GNode {
   tp: string[];
   d?: string;
   o?: string;
+  /** Present (and `true`) only on the root topic ("Agent"). */
+  root?: true;
   x: number;
   y: number;
   r: number;
@@ -89,8 +94,25 @@ const RADIUS: Record<PageType, number> = {
 const ROOT_RADIUS = 60;
 const TOPIC_RING_RADIUS = 1000;
 const TOPIC_LINK_DISTANCE = 260;
-const SOURCE_LINK_DISTANCE = 90;
+/**
+ * Source attach distance (source -> concept / fallback target). Raised from
+ * 90 so the L2 source cards, which need `SOURCE_COLLIDE_RADIUS`, fit around
+ * their concept without being pushed far out.
+ */
+const SOURCE_LINK_DISTANCE = 120;
+/** `by` (source -> entity) link distance: entities stay close to their source. */
+const ENTITY_LINK_DISTANCE = 90;
 const COLLIDE_PADDING = 12;
+/**
+ * Collision radius for source nodes, from the L2 card footprint: a card is
+ * `CARD_W` CSS px wide, i.e. `CARD_W / LEVEL_SCALE[2]` world units at L2.
+ * The two numbers are duplicated from lod.ts (CARD_W = 220,
+ * LEVEL_SCALE[2] = 2.6) so this build-time module does not import browser
+ * code; keep them in sync. 220 / 2.6 / 2 ≈ 42.3.
+ */
+const L2_CARD_W = 220;
+const L2_SCALE = 2.6;
+const SOURCE_COLLIDE_RADIUS = Math.ceil(L2_CARD_W / L2_SCALE / 2);
 const TICKS = 300;
 const SEED = 42;
 
@@ -349,7 +371,7 @@ export function buildGraph(
       if (by.entity === undefined) continue;
       const entityId = `wiki/entities/${by.entity}`;
       if (nodeById.has(entityId)) {
-        links.push({ source: id, target: entityId, distance: SOURCE_LINK_DISTANCE });
+        links.push({ source: id, target: entityId, distance: ENTITY_LINK_DISTANCE });
         byLinks.push([id, entityId]);
       }
     }
@@ -405,7 +427,9 @@ export function buildGraph(
     )
     .force(
       'collide',
-      forceCollide<BuildNode>((n) => n.r + COLLIDE_PADDING),
+      forceCollide<BuildNode>((n) =>
+        SOURCE_TYPES.has(n.t) ? Math.max(SOURCE_COLLIDE_RADIUS, n.r + COLLIDE_PADDING) : n.r + COLLIDE_PADDING,
+      ),
     )
     .stop();
 
@@ -457,6 +481,7 @@ export function buildGraph(
   // Strip simulation-internal fields (index/vx/vy/fx/fy) from the output nodes.
   const outNodes: GNode[] = nodes.map((n) => {
     const out: GNode = { id: n.id, t: n.t, l: n.l, s: n.s, tp: n.tp, x: n.x, y: n.y, r: n.r };
+    if (n.id === rootId) out.root = true;
     if (n.d !== undefined) out.d = n.d;
     if (n.o !== undefined) out.o = n.o;
     return out;
