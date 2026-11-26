@@ -1,0 +1,33 @@
+{
+  "name": "awesome-agent-llm-wiki-site",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "prepare-content": "tsx scripts/prepare.ts",
+    "build": "npm run prepare-content && astro build",
+    "dev": "npm run prepare-content && astro dev",
+    "test": "vitest run",
+    "e2e": "playwright test"
+  },
+  "dependencies": {
+    "astro": "^7.4.13",
+    "@astrojs/starlight": "^0.43.1",
+    "@astrojs/markdown-remark": "^7.3.0",
+    "gray-matter": "^4.0.3",
+    "d3-force": "^3.0.0",
+    "d3-quadtree": "^3.0.1",
+    "unified": "^11.0.5",
+    "remark-parse": "^11.0.0",
+    "unist-util-visit": "^5.0.0",
+    "hast-util-to-string": "^3.0.1"
+  },
+  "devDependencies": {
+    "vitest": "^5.1.2",
+    "happy-dom": "^15.0.0",
+    "tsx": "^4.19.2",
+    "@playwright/test": "^1.49.0",
+    "@lhci/cli": "^0.14.0",
+    "@types/d3-force": "^3.0.10",
+    "@types/d3-quadtree": "^1.0.6"
+  }
+}
