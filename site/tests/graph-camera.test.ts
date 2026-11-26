@@ -60,18 +60,27 @@ describe('frameCluster', () => {
     expect(c.k).toBe(LEVEL_SCALE[2]);
   });
 
-  test('a cluster too big for the level clamps k to the level range and keeps the focus on screen', () => {
+  test('members that cannot fit at the level are dropped farthest first; the rest stay on screen', () => {
+    // Real case (model-managed-context): one source close by, one too far
+    // to share the screen at the lowest L2 zoom. The near one and the
+    // focus are framed fully; the view leans toward the far one.
     const focus = { x: 0, y: 0 };
-    const far = [{ x: 3000, y: 2000 }, { x: 2800, y: -50 }];
-    const c2 = frameCluster(focus, far, view, 2);
-    expect(c2.k).toBeCloseTo(LEVEL_RANGE[2][0]);
-    expect(levelOf(c2.k)).toBe(2);
-    expect(inside(c2, focus, 0, 0)).toBe(true);
+    const near = { x: -150, y: 100 };
+    const far = { x: -2500, y: 200 };
+    const c = frameCluster(focus, [far, near], view, 2);
+    expect(c.k).toBeCloseTo(LEVEL_RANGE[2][0]);
+    expect(levelOf(c.k)).toBe(2);
+    expect(inside(c, near, CARD_W / 2 - 1, CARD_H / 2 - 1)).toBe(true);
+    expect(inside(c, focus, CARD_W / 2 - 1, CARD_H / 2 - 1)).toBe(true);
+    expect(screen(c, focus)[0]).toBeGreaterThan(view.w / 2); // leaned left, toward `far`
 
-    const c1 = frameCluster(focus, far, view, 1);
-    expect(c1.k).toBeCloseTo(LEVEL_RANGE[1][0]);
-    expect(levelOf(c1.k)).toBe(1);
-    expect(inside(c1, focus, 0, 0)).toBe(true);
+    // Nothing fits: lowest zoom of the level, focus on screen, never outside the level.
+    for (const level of [1, 2] as const) {
+      const c2 = frameCluster(focus, [{ x: 3000, y: 2000 }, { x: 2800, y: -50 }], view, level);
+      expect(c2.k).toBeCloseTo(LEVEL_RANGE[level][0]);
+      expect(levelOf(c2.k)).toBe(level);
+      expect(inside(c2, focus, 0, 0)).toBe(true);
+    }
   });
 
   test('level ranges sit clear of the crossfade bands', () => {

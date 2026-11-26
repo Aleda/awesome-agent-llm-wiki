@@ -83,30 +83,15 @@ const FRAME_PAD: Record<1 | 2, { x: number; top: number; bottom: number }> = {
   2: { x: CARD_W / 2 + 16, top: CARD_H / 2 + 16, bottom: CARD_H / 2 + 28 },
 };
 
-/**
- * Camera for flying to `focus` at `level` in a `view.w` × `view.h` area
- * (same frame as `fitNode`): frames `focus` together with `cluster` (at
- * L1 a topic's part-of concepts, at L2 a concept's neighbouring sources).
- * The bounding box of their world positions gets `FRAME_PAD` screen-px
- * room for labels/cards; `k` is the largest zoom that fits, capped at
- * `LEVEL_SCALE[level]` and clamped into `LEVEL_RANGE[level]`, so the view
- * always lands on the requested level. When the clamp means the cluster
- * cannot fit, the view is centred on the cluster but shifted so `focus`
- * stays inside the area. L0, or an empty cluster, is `fitNode`.
- */
-export function frameCluster(
-  focus: Pick<GNode, 'x' | 'y'>,
-  cluster: Pick<GNode, 'x' | 'y'>[],
-  view: { w: number; h: number },
-  level: 0 | 1 | 2,
-): Camera {
-  if (level === 0 || cluster.length === 0) return fitNode(focus as GNode, view, level);
-  const pad = FRAME_PAD[level];
-  let x0 = focus.x;
-  let x1 = focus.x;
-  let y0 = focus.y;
-  let y1 = focus.y;
-  for (const n of cluster) {
+type XY = Pick<GNode, 'x' | 'y'>;
+
+/** Bounding box of `pts` and the largest zoom that fits it (with `pad`) in `view`. */
+function boxFit(pts: XY[], view: { w: number; h: number }, pad: { x: number; top: number; bottom: number }) {
+  let x0 = Infinity;
+  let x1 = -Infinity;
+  let y0 = Infinity;
+  let y1 = -Infinity;
+  for (const n of pts) {
     x0 = Math.min(x0, n.x);
     x1 = Math.max(x1, n.x);
     y0 = Math.min(y0, n.y);
@@ -115,17 +100,57 @@ export function frameCluster(
   const availW = Math.max(1, view.w - 2 * pad.x);
   const availH = Math.max(1, view.h - pad.top - pad.bottom);
   const fit = Math.min(x1 > x0 ? availW / (x1 - x0) : Infinity, y1 > y0 ? availH / (y1 - y0) : Infinity);
-  const [lo, hi] = LEVEL_RANGE[level];
-  const k = Math.min(hi, Math.max(lo, Math.min(fit, LEVEL_SCALE[level])));
+  return { x0, x1, y0, y1, fit };
+}
 
-  // Centre the padded box: its middle in screen px is at the area's middle.
-  let cx = (x0 + x1) / 2;
-  let cy = (y0 + y1) / 2 + (pad.bottom - pad.top) / (2 * k);
-  // Keep `focus` on screen with its own padding if the box overflows.
+/**
+ * Camera for flying to `focus` at `level` in a `view.w` × `view.h` area
+ * (same frame as `fitNode`): frames `focus` together with `cluster` (at
+ * L1 a topic's part-of concepts, at L2 a concept's neighbouring sources).
+ * The bounding box of their world positions gets `FRAME_PAD` screen-px
+ * room for labels/cards; `k` is the largest zoom that fits, capped at
+ * `LEVEL_SCALE[level]` and never below `LEVEL_RANGE[level][0]`, so the
+ * view always lands on the requested level. Members that cannot share the
+ * screen with `focus` even at that lowest zoom are dropped, farthest from
+ * `focus` first; the view then uses the lowest zoom and leans toward the
+ * dropped ones as far as `focus` and the kept members stay fully inside.
+ * L0, or an empty cluster, is `fitNode`.
+ */
+export function frameCluster(focus: XY, cluster: XY[], view: { w: number; h: number }, level: 0 | 1 | 2): Camera {
+  if (level === 0) return fitNode(focus as GNode, view, level);
+  const pad = FRAME_PAD[level];
+  const [lo, hi] = LEVEL_RANGE[level];
+  const members = cluster
+    .slice()
+    .sort((a, b) => Math.hypot(a.x - focus.x, a.y - focus.y) - Math.hypot(b.x - focus.x, b.y - focus.y));
+  const dropped: XY[] = [];
+  let box = boxFit([focus, ...members], view, pad);
+  while (members.length > 0 && box.fit < lo) {
+    dropped.push(members.pop()!);
+    box = boxFit([focus, ...members], view, pad);
+  }
+  if (members.length === 0 && dropped.length === 0) return fitNode(focus as GNode, view, level);
+  if (dropped.length === 0) {
+    const k = Math.min(hi, Math.max(lo, Math.min(box.fit, LEVEL_SCALE[level])));
+    // Centre the padded box: its middle in screen px is at the area's middle.
+    const cx = (box.x0 + box.x1) / 2;
+    const cy = (box.y0 + box.y1) / 2 + (pad.bottom - pad.top) / (2 * k);
+    return { x: cx - view.w / (2 * k), y: cy - view.h / (2 * k), k };
+  }
+  // Some members do not fit: zoom out as far as the level allows and lean
+  // the view toward them (their centroid) as far as the kept points, with
+  // their padding, stay inside — the dropped side shows as much as it can.
+  const k = lo;
+  const tx = dropped.reduce((a, n) => a + n.x, 0) / dropped.length;
+  const ty = dropped.reduce((a, n) => a + n.y, 0) / dropped.length;
   const halfW = Math.max(0, view.w / 2 - pad.x) / k;
-  const halfH = Math.max(0, view.h / 2 - Math.max(pad.top, pad.bottom)) / k;
-  cx = Math.min(focus.x + halfW, Math.max(focus.x - halfW, cx));
-  cy = Math.min(focus.y + halfH, Math.max(focus.y - halfH, cy));
+  const cxLo = box.x1 - halfW;
+  const cxHi = box.x0 + halfW;
+  const cyLo = box.y1 - Math.max(0, view.h / 2 - pad.bottom) / k;
+  const cyHi = box.y0 + Math.max(0, view.h / 2 - pad.top) / k;
+  const clamp = (v: number, a: number, b: number): number => (a > b ? (a + b) / 2 : Math.min(b, Math.max(a, v)));
+  const cx = clamp(tx, cxLo, cxHi);
+  const cy = clamp(ty, cyLo, cyHi);
   return { x: cx - view.w / (2 * k), y: cy - view.h / (2 * k), k };
 }
 
