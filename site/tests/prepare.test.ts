@@ -4,7 +4,16 @@ import os from 'node:os';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { describe, expect, test, beforeAll, afterAll } from 'vitest';
+import { unified } from 'unified';
+import remarkParse from 'remark-parse';
+import remarkDirective from 'remark-directive';
+import remarkRehype from 'remark-rehype';
+import rehypeRaw from 'rehype-raw';
+import rehypeStringify from 'rehype-stringify';
+import { VFile } from 'vfile';
 import { prepare, stripInsight, defaultPositionsPath } from '../scripts/prepare';
+import { rehypeTranscript } from '../src/lib/rehype-transcript';
+import { remarkWiki } from '../src/lib/remark-wiki';
 import { ContentError } from '../src/lib/content-index';
 
 // vitest runs with cwd = site/, fixtures live at the repo root.
@@ -326,6 +335,80 @@ describe('stripInsight', () => {
 
   test('trims surrounding whitespace', () => {
     expect(stripInsight('  text here  ')).toBe('text here');
+  });
+});
+
+describe('prepare escapes fetched text in copied sources pages', () => {
+  const XSS = '<img src=x onerror=alert(1)>';
+  const TRANSCRIPT = 'sources/videos/demo/20261101-abc/transcript.md';
+  const ANCHORS = 'sources/papers/2611.00001/anchors.md';
+  let tmp: string;
+  let site: string;
+
+  /** Render like Astro + Starlight do: remark-directive, remarkWiki, raw HTML allowed through, then rehype-raw. */
+  async function render(markdown: string, filePath: string): Promise<string> {
+    const out = await unified()
+      .use(remarkParse)
+      .use(remarkDirective)
+      .use(remarkWiki, {
+        indexPath: path.join(site, '.generated/index.json'),
+        anchorsDir: path.join(site, 'public/data/anchors'),
+      })
+      .use(remarkRehype, { allowDangerousHtml: true })
+      .use(rehypeRaw)
+      .use(rehypeTranscript)
+      .use(rehypeStringify)
+      .process(new VFile({ value: markdown, path: filePath }));
+    return String(out);
+  }
+
+  beforeAll(async () => {
+    tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-escape-'));
+    const root = path.join(tmp, 'repo');
+    await fs.cp(MINI, root, { recursive: true });
+    await fs.appendFile(
+      path.join(root, TRANSCRIPT),
+      `[00:02:00] 讲者说 ${XSS} & [点我](javascript:alert(1))\n`,
+    );
+    await fs.appendFile(path.join(root, ANCHORS), `- Fig. 9 — ${XSS}\n`);
+    site = path.join(tmp, 'site');
+    await prepare({ root, siteDir: site });
+  });
+
+  afterAll(async () => {
+    await fs.rm(tmp, { recursive: true, force: true });
+  });
+
+  test('copied bodies carry no raw HTML; frontmatter is kept', () => {
+    for (const rel of [TRANSCRIPT, ANCHORS]) {
+      const parsed = matter(read(site, `src/content/docs/${rel}`));
+      expect(parsed.content).not.toContain('<img');
+      expect(parsed.data.type).toBe('raw');
+    }
+    const transcript = matter(read(site, `src/content/docs/${TRANSCRIPT}`));
+    expect(transcript.data.raw.channel).toBe('demo');
+  });
+
+  test('rendered transcript shows the HTML as text, keeps timestamp ids, no live link', async () => {
+    const html = await render(matter(read(site, `src/content/docs/${TRANSCRIPT}`)).content, TRANSCRIPT);
+    expect(html).not.toMatch(/<img/i);
+    expect(html).not.toContain('href="javascript:');
+    expect(html).toContain('&#x3C;img src=x onerror=alert(1)>');
+    expect(html).toContain('<p id="t-000000">[00:00:00] 第一段开场</p>');
+    expect(html).toMatch(/<p id="t-000200">\[00:02:00\] 讲者说 /);
+  });
+
+  test('rendered anchors page shows the HTML as text', async () => {
+    const html = await render(matter(read(site, `src/content/docs/${ANCHORS}`)).content, ANCHORS);
+    expect(html).not.toMatch(/<img/i);
+    expect(html).toContain('Fig. 9 — &#x3C;img');
+  });
+
+  test('anchor JSON keeps the original text (hover cards render it via textContent)', () => {
+    const transcript = JSON.parse(read(site, 'public/data/anchors/sources/videos/demo/20261101-abc.json'));
+    expect(transcript['00:02:00'].text).toContain(XSS);
+    const paper = JSON.parse(read(site, 'public/data/anchors/sources/papers/2611.00001.json'));
+    expect(paper['Fig. 9'].text).toBe(XSS);
   });
 });
 

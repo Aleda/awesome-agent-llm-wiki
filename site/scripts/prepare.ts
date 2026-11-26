@@ -143,9 +143,29 @@ async function copyWikiTree(root: string, siteDir: string): Promise<void> {
 }
 
 /**
+ * Neutralise fetched text before it is rendered as Markdown: `&`, `<`, `>`
+ * become HTML entities (raw HTML in a transcript or a figure caption would
+ * otherwise pass straight through Astro, e.g. `<img onerror>`), and `[`/`]`
+ * become numeric entities so fetched text cannot form Markdown links or
+ * images (`[x](javascript:…)`). The rendered text is unchanged — entities
+ * decode back to the same characters, so `[HH:MM:SS]` timestamps still
+ * reach rehypeTranscript as text.
+ */
+export function escapeRawBody(body: string): string {
+  return body
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\[/g, '&#91;')
+    .replace(/\]/g, '&#93;');
+}
+
+/**
  * Copy `transcript.md`/`anchors.md` for every `source_dir` referenced by
  * some wiki page into `<siteDir>/src/content/docs/sources/**`, rewriting
- * frontmatter to `{ title, type: 'raw', pagefind: false, raw }`.
+ * frontmatter to `{ title, type: 'raw', pagefind: false, raw }` and
+ * escaping the body (`escapeRawBody`). The committed `sources/` files are
+ * never touched; the anchor JSON is built from them unescaped.
  */
 async function copySourceRawFiles(
   root: string,
@@ -164,7 +184,7 @@ async function copySourceRawFiles(
       const parsed = matter(raw);
       const title =
         typeof parsed.data.title === 'string' ? parsed.data.title : `${sourceDir} anchors`;
-      const rewritten = matter.stringify(parsed.content, {
+      const rewritten = matter.stringify(escapeRawBody(parsed.content), {
         title,
         type: 'raw',
         pagefind: false,
