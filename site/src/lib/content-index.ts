@@ -218,14 +218,41 @@ export async function loadRepo(root: string): Promise<RepoIndex> {
     return pages.has(id) || redirects.has(id);
   }
 
+  /**
+   * Follow a redirect chain to its final destination. Reports (via `errors`)
+   * when the chain is broken (final target isn't a real page) or cyclic,
+   * rather than looping forever or silently returning a dangling id. Each
+   * redirect source is only diagnosed once (memoized) even if reached both
+   * from the up-front sweep below and again while resolving an edge target.
+   */
+  const redirectDiagnosed = new Set<PageId>();
   function resolveRedirect(id: PageId): PageId {
     const seen = new Set<PageId>();
     let current = id;
-    while (redirects.has(current) && !seen.has(current)) {
+    while (redirects.has(current)) {
+      if (seen.has(current)) {
+        if (!redirectDiagnosed.has(id)) {
+          redirectDiagnosed.add(id);
+          errors.push(`redirect cycle detected starting at wiki/${id.slice('wiki/'.length)}`);
+        }
+        return current;
+      }
       seen.add(current);
       current = redirects.get(current)!;
     }
+    if (!pages.has(current) && !redirectDiagnosed.has(id)) {
+      redirectDiagnosed.add(id);
+      errors.push(
+        `redirect target does not exist: wiki/${id.slice('wiki/'.length)} -> ${current}`,
+      );
+    }
     return current;
+  }
+
+  // Validate every redirect's final destination up front (not just the ones
+  // reached via an edge), so an unreferenced broken `redirect_to` still errors.
+  for (const sourceId of redirects.keys()) {
+    resolveRedirect(sourceId);
   }
 
   const edges: Edge[] = [];

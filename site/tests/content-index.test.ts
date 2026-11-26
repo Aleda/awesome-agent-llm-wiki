@@ -1,3 +1,5 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { describe, expect, test } from 'vitest';
 import {
@@ -14,6 +16,77 @@ import { toRoute } from '../src/lib/routes';
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const MINI = path.join(REPO_ROOT, 'tests/fixtures/mini-repo');
 const BROKEN = path.join(REPO_ROOT, 'tests/fixtures/broken-repo');
+
+/** Write a minimal valid topic page so a temp repo's concept pages have a `part-of` target. */
+async function writeContextTopic(wikiDir: string) {
+  await fs.mkdir(path.join(wikiDir, 'topics'), { recursive: true });
+  await fs.writeFile(
+    path.join(wikiDir, 'topics', 'context.md'),
+    [
+      '---',
+      'title: Context',
+      'type: topic',
+      'summary: 临时测试主题。',
+      'added: 2026-11-26',
+      '---',
+      '',
+      '## 这个方向在解决什么',
+      '',
+      '## 概念地图',
+      '',
+      '## 关键争论',
+      '',
+      '## 最近进展',
+      '',
+    ].join('\n'),
+  );
+}
+
+async function writeConcept(wikiDir: string, slug: string, extraFrontmatter: string) {
+  await fs.mkdir(path.join(wikiDir, 'concepts'), { recursive: true });
+  await fs.writeFile(
+    path.join(wikiDir, 'concepts', `${slug}.md`),
+    [
+      '---',
+      `title: ${slug}`,
+      'type: concept',
+      'summary: 临时测试概念。',
+      'topics: [context]',
+      'added: 2026-11-26',
+      'status: emerging',
+      extraFrontmatter,
+      'relations:',
+      '  - { topic: context, rel: part-of }',
+      '---',
+      '',
+      '## 定义',
+      '',
+      '临时测试内容。',
+      '',
+      '## 演化',
+      '',
+      '## 设计空间',
+      '',
+      '## 共识与分歧',
+      '',
+      '## 开放问题',
+      '',
+    ].join('\n'),
+  );
+}
+
+/** Make a temp dir under the OS tmpdir with a `wiki/` subdir, auto-cleaned via `using`-style helper. */
+async function makeTempRepo(): Promise<{ root: string; wikiDir: string; cleanup: () => Promise<void> }> {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'content-index-test-'));
+  const wikiDir = path.join(root, 'wiki');
+  await fs.mkdir(wikiDir, { recursive: true });
+  return {
+    root,
+    wikiDir,
+    cleanup: () => fs.rm(root, { recursive: true, force: true }),
+  };
+}
+
 
 describe('loadRepo on mini-repo', () => {
   let idx: RepoIndex;
@@ -78,6 +151,40 @@ describe('loadRepo on broken-repo', () => {
   });
 });
 
+describe('loadRepo redirect validation (temp fixtures)', () => {
+  test('redirect_to pointing at a nonexistent concept is an error', async () => {
+    const { wikiDir, cleanup } = await makeTempRepo();
+    try {
+      await writeContextTopic(wikiDir);
+      await writeConcept(wikiDir, 'dangling-redirect', 'redirect_to: nonexistent-target');
+
+      const err = await loadRepo(path.dirname(wikiDir)).catch((e) => e);
+      expect(err).toBeInstanceOf(ContentError);
+      expect(err.errors).toHaveLength(1);
+      expect(err.errors[0]).toMatch(/redirect target does not exist/);
+      expect(err.errors[0]).toMatch(/dangling-redirect/);
+      expect(err.errors[0]).toMatch(/nonexistent-target/);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  test('a redirect cycle is reported as an error, not an infinite loop', async () => {
+    const { wikiDir, cleanup } = await makeTempRepo();
+    try {
+      await writeContextTopic(wikiDir);
+      await writeConcept(wikiDir, 'cycle-a', 'redirect_to: cycle-b');
+      await writeConcept(wikiDir, 'cycle-b', 'redirect_to: cycle-a');
+
+      const err = await loadRepo(path.dirname(wikiDir)).catch((e) => e);
+      expect(err).toBeInstanceOf(ContentError);
+      expect(err.errors.some((e: string) => /redirect cycle detected/.test(e))).toBe(true);
+    } finally {
+      await cleanup();
+    }
+  });
+});
+
 describe('resolveTarget', () => {
   test('concept target', () => {
     expect(resolveTarget({ concept: 'x', rel: 'proposes' })).toBe('wiki/concepts/x');
@@ -100,6 +207,17 @@ describe('resolveLink', () => {
   test('ignores external and images', () => {
     expect(resolveLink('wiki/papers/a.md', 'https://arxiv.org/abs/1')).toBeNull();
     expect(resolveLink('wiki/papers/a.md', '../assets/fig.png')).toBeNull();
+  });
+  test('resolves a link into sources/ (rendered transcript page) and keeps its hash', () => {
+    expect(
+      resolveLink(
+        'wiki/concepts/x.md',
+        '../../sources/videos/demo/20261101-abc/transcript.md#t-000102',
+      ),
+    ).toEqual({
+      id: 'sources/videos/demo/20261101-abc/transcript',
+      hash: '#t-000102',
+    });
   });
 });
 
