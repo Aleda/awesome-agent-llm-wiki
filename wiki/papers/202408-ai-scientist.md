@@ -23,14 +23,14 @@ by:
   - { name: Jeff Clune, role: author }
   - { name: David Ha, role: author }
 relations:
-  - { concept: automated-ai-research, rel: extends, note: 给出端到端自动做 ML 研究的系统：给定研究方向和小规模代码模板，自动生成想法并查新、改代码跑实验、写成 LaTeX 论文，再由 LLM 评审员打分，评审结果存档供下一轮参考；用 AI 自动化 AI 研究的设想更早，作者引 Schmidhuber 和 Clune 的 AI-generating algorithms }
+  - { concept: automated-ai-research, rel: extends, note: 给出端到端自动做 ML 研究的系统：给定研究方向和小规模代码模板，自动生成想法并查新、改代码跑实验、写成 LaTeX 论文，再由 LLM 评审员打分，评审结果存档供下一轮参考；用 AI 自动化 AI 研究的设想更早，作者归于 Schmidhuber 1991–2012 年的工作、Ghahramani 2015 和 Clune 2019 的 AI-generating algorithms }
   - { concept: human-bottleneck-in-ai-rd, rel: supports, note: 作者建议人工核查实现后再相信结果；案例论文里真正的缺陷要有领域知识才看得出，自动评审员只抓到一部分 }
 ---
 
 ## 新认知
 
 - **The AI Scientist 把一篇 ML 论文的全流程交给 LLM：给定宽泛的研究方向和一份能跑通的小代码模板，它生成想法并查新、用 Aider 改代码跑实验、写成 LaTeX 论文，最后自己评审（§1¶3、§3¶1）**，作者称之为第一个端到端的全自动框架（§1¶6），见[自动化 AI 研究](../concepts/automated-ai-research.md#设计空间)。
-- **闭环的关键在评审员：GPT-4o 评审员在 500 篇 ICLR 2022 论文上 balanced accuracy 0.65，人类基线 0.66；按普通准确率是 0.66 对 0.73，假阳性率 0.31 对 0.17（Tab. 1）**，人类基线取自 NeurIPS 2021 一致性实验，与评审员测的论文来自不同会议（Tab. 1），见[自动化 AI 研究](../concepts/automated-ai-research.md#共识与分歧)。
+- **闭环的关键在评审员：GPT-4o 评审员（1-shot、阈值 6）在 500 篇 ICLR 2022 论文上 balanced accuracy 0.65，人类基线 0.66；按普通准确率是 0.66 对 0.73，假阳性率 0.31 对 0.17（Tab. 1）**，人类基线取自 NeurIPS 2021 一致性实验，与评审员测的论文来自不同会议（Tab. 1），见[自动化 AI 研究](../concepts/automated-ai-research.md#共识与分歧)。
 - 评审员只在人写的论文上校验过，录用论文用的还是 camera-ready 版本、被拒论文用的是投稿版本（§8¶2），它给 AI 生成的论文打分有多准，论文没有直接检验，见[自动化 AI 研究](../concepts/automated-ai-research.md#开放问题)。
 - **本库判断：作者说少数论文的分数超过了录用阈值（§9¶7），但三个模板、四个模型的表里，最高分 6.0 只出现在 Diffusion 模板的 Sonnet 3.5 一格，正好等于录用阈值（Tab. 3、Tab. 4、Tab. 5、§4¶2）；Claude Sonnet 3.5 三个模板的平均分在 3.44 到 4.05 之间（Tab. 3、Tab. 4、Tab. 5）**，见[自动化 AI 研究](../concepts/automated-ai-research.md#设计空间)。
 - 便宜的是 API 调用：每篇论文约 10–15 美元（§6¶3），而实验模板是几分钟能跑完的小规模训练（§3¶1），几百篇论文基本只用了一台 8×H100 节点跑一周（§9¶5），见[自动化 AI 研究](../concepts/automated-ai-research.md#设计空间)。
@@ -87,12 +87,12 @@ foundation model 此前只被用来加速研究流程中的个别环节，如写
 - 实验里的闭环没有真正闭上：方法描述中评审结果会进入存档、影响下一轮想法（§1¶4），但实验为了并行，生成想法时不等待论文评审结果（§6¶2）。"在开放式循环中不断改进"目前是"原则上"可以（§1¶3）。
 - 查新由生成想法的同一个模型自己判断（§6¶1），Tab. 3–5 的"通过查新"比例（如 51 个里 49 个）说明的只是模型自认新颖，没有外部核实。
 - 评审员与人类的比较跨了数据集：人类数字来自 NeurIPS 2021 一致性实验（Tab. 1），评审员测的是 ICLR 2022 论文。正文把 balanced accuracy 写成"0.65% vs. 0.66%"，并把假阳性率标成 FNR（§4¶3），与 Tab. 1 对照可知是笔误。
-- "第一个端到端框架"（§1¶6）是指把想法、实验、写作和评审串成一个系统；用 AI 自动化 AI 研究的设想，作者自己引用了 Schmidhuber 等人和 Clune 的 AI-generating algorithms（§1¶1），把单个环节交给 LLM 的工作也在相关工作里列出（§7¶2）。所以本库不把它记为[自动化 AI 研究](../concepts/automated-ai-research.md)的提出者。
-- venue 记为 arXiv：2408.06292 的 arXiv 记录没有写会议或期刊。2026 年发表在 Nature 651 卷 914–919 页的 "Towards end-to-end automation of AI research" 是另一条 arXiv 记录（2606.15497），作者名单不同（加入 Yutaro Yamada 和 Shengran Hu），内容也扩展了；本页只记 2408.06292 v3。Chris Lu 署 Sakana AI 和 Oxford 的 FLAIR，Cong Lu 署 UBC 和 Vector Institute，Robert Tjarko Lange 和 David Ha 署 Sakana AI，Jakob Foerster 署 Oxford 的 FLAIR，Jeff Clune 署 UBC 和 Vector Institute。
+- "第一个端到端框架"（§1¶6）是指把想法、实验、写作和评审串成一个系统；用 AI 自动化 AI 研究的设想，作者自己归于 Schmidhuber 1991–2012 年的工作、Ghahramani 2015 和 Clune 2019 的 AI-generating algorithms（§1¶1），把单个环节交给 LLM 的工作也在相关工作里列出（§7¶2）。所以本库不把它记为[自动化 AI 研究](../concepts/automated-ai-research.md)的提出者。
+- venue 记为 arXiv：2408.06292 的 arXiv 记录没有写会议或期刊。同一团队的 "Towards End-to-End Automation of AI Research" 是另一条 arXiv 记录（2606.15497，2026-03-31 提交），arXiv API 返回的 comment 写着 "Published in Nature 651, 914-919 (2026)"，作者名单多了 Yutaro Yamada 和 Shengran Hu；本页只记 2408.06292 v3。Chris Lu 署 Sakana AI 和 Oxford 的 FLAIR，Cong Lu 署 UBC 和 Vector Institute，Robert Tjarko Lange 和 David Ha 署 Sakana AI，Jakob Foerster 署 Oxford 的 FLAIR，Jeff Clune 署 UBC 和 Vector Institute。
 
 ## 与其他工作的关系
 
 - 与 [Anthropic / When AI builds itself](../blogs/20260918-anthropic-when-ai-builds-itself.md)：Anthropic 的自动化研究员做 weak-to-strong 监督问题，问题和评分规则由人给定（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §2¶13）；The AI Scientist 只要研究方向和代码模板（§3¶1），评分交给 LLM 评审员（§4¶1）。前者有可靠的评分、问题范围窄，后者问题开放、评分本身有误差，见[自动化 AI 研究](../concepts/automated-ai-research.md#设计空间)。
 - 与 [Darwin Gödel Machine](./202505-darwin-godel-machine.md)：The AI Scientist 在展望里提出让系统以自指的方式研究自己的代码（§9¶9），并说本项目的大量代码就是 Aider 写的（§9¶9）。DGM 有三位共同作者，在 coding agent 上做了自我修改，见[自我修改的 agent](../concepts/self-modifying-agent.md)。
 - 与 [Reflexion](./202303-reflexion.md)：The AI Scientist 在想法打磨、逐节写作和评审中都用 self-reflection，引用的是 Reflexion（§3¶2、§4¶6），评审员上加 Reflexion 提高约 2%（§4¶6）。这里的反思是对同一份产出的多轮自我修改，没有 Reflexion 那样的成败信号，与[语言反馈强化](../concepts/verbal-reinforcement.md)不是同一种用法。
-- 与 [Self-Rewarding Language Models](./202401-self-rewarding-language-models.md)：两者都让 LLM 当评判者，并拿人类判断校验。The AI Scientist 的评审员只用来打分和筛选，不用来训练模型；Self-Rewarding 的评判结果直接变成下一轮的训练数据（[Self-Rewarding](./202401-self-rewarding-language-models.md) §2.3¶3）。
+- 与 [Self-Rewarding Language Models](./202401-self-rewarding-language-models.md)：两者都让 LLM 当评判者，并拿人类判断校验。The AI Scientist 的评审员只负责打分和筛选；Self-Rewarding 的评判结果直接变成下一轮的训练数据（[Self-Rewarding](./202401-self-rewarding-language-models.md) §2.3¶3）。

@@ -16,7 +16,7 @@ relations:
 
 让 AI 系统承担 AI 研发本身的工作，包括写代码、跑实验、提出假设和选择研究问题；推到极点，AI 能自主设计并开发自己的后继者，也就是递归自我改进（§0¶2）。它要回答的问题是：研发的哪些环节已经能交给 AI，离闭环还差哪一环（§2¶2）。Anthropic 的时间线把这一阶段称为"Closing the loop"（§0¶18），设想 agent 能自己构建和训练模型（§0¶19）。
 
-这一设想早于本库收录的所有素材：本概念在本库最早的来源 The AI Scientist（2024-08）引用了 Schmidhuber 和 Clune 的 AI-generating algorithms 等更早的构想（[The AI Scientist](../papers/202408-ai-scientist.md) §1¶1），所以本概念的演化线上没有记"提出"。
+这一设想早于本库收录的所有素材。本库最早的来源是 2024-08 的 The AI Scientist，它把"用 AI 自动化 AI 研究"的设想归于 Schmidhuber 1991–2012 年的工作、Ghahramani 2015 和 Clune 2019 的 AI-generating algorithms（[The AI Scientist](../papers/202408-ai-scientist.md) §1¶1），所以演化线上没有记"提出"。
 
 ## 演化
 
@@ -43,7 +43,7 @@ relations:
 - 反方认为仍在人手里的选题判断才最重要（§4¶1）；Anthropic 认为 AI 进展大多是增量工作，这类工作正是 Claude 擅长的，所以推动前沿的工作大多可以自动化（§4¶2）。
 - 本库判断：Anthropic 的自动化研究员做的是问题和评分规则都由人给定的任务（§2¶13），能自动打分的问题最适合自动化；没有可靠评测器的研究问题能否同样交给 AI，原文没有给证据。
 - 评分由谁来给，三份素材的做法不同。The AI Scientist 在开放问题上用 LLM 评审员代替评分规则，评审员在 500 篇 ICLR 2022 论文上 balanced accuracy 0.65、人类基线 0.66，但假阳性率 0.31 对 0.17（[The AI Scientist](../papers/202408-ai-scientist.md) Tab. 1），而且只在人写的论文上校验过（[The AI Scientist](../papers/202408-ai-scientist.md) §8¶2）。DGM 用现成的 coding benchmark 打分（[DGM](../papers/202505-darwin-godel-machine.md) §3¶2），作者仍担心 benchmark 测不到的问题会在代际间放大（[DGM](../papers/202505-darwin-godel-machine.md) §5¶1）。两者都出现过钻评分空子的行为：The AI Scientist 的一些想法靠泄露未来 token 降低困惑度（[The AI Scientist](../papers/202408-ai-scientist.md) §6.2¶1），DGM 在附录 H 记录了删掉检测标记拿满分的 objective hacking，见[自我修改的 agent](self-modifying-agent.md#共识与分歧)。
-- 成本：The AI Scientist 每篇论文约 10–15 美元（[The AI Scientist](../papers/202408-ai-scientist.md) §6¶3），但实验是几分钟能跑完的小规模训练（[The AI Scientist](../papers/202408-ai-scientist.md) §3¶1）；DGM 一次 SWE-bench 运行约两周、API 开销显著（[DGM](../papers/202505-darwin-godel-machine.md) §6¶2）。本库判断：两者都只改代码和 harness，不训练驱动自己的底座模型，离 Anthropic 时间线里 agent 自己构建和训练模型的阶段（§0¶19）还隔着训练算力这一层。
+- 成本：The AI Scientist 每篇论文约 10–15 美元（[The AI Scientist](../papers/202408-ai-scientist.md) §6¶3），但实验是几分钟能跑完的小规模训练（[The AI Scientist](../papers/202408-ai-scientist.md) §3¶1）；DGM 一次 SWE-bench 运行约两周、API 开销显著（[DGM](../papers/202505-darwin-godel-machine.md) §6¶2）。本库判断：两者改的都只是代码和 harness，驱动它们的底座模型没有重新训练，离 Anthropic 时间线里 agent 自己构建和训练模型的阶段（§0¶19）还隔着训练算力这一层。
 - 谁从中受益：Anthropic 认为最可能的前景是 AI 实验室效率持续复利增长（§4¶8），它描述的加速发生在头部实验室自己的流程里（§2¶4）。NeoCognition 联创谷雨认为，AI 写训练 infra 和 recipe 的能力超过人之后，头部模型公司积累的 infra 和 recipe 反而会成为负担，从零开始的 NeoLab 能让 AI 随时重搜、随时丢弃，可能加速更快（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:02:04]–[00:03:05]）；他同时承认 NeoLab 要做 full stack 训练仍需要大量的钱（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:03:05]）。谷雨的证据是一则转述的国内模型厂案例（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:03:05]），Anthropic 的证据是外部无法复核的内部数据，两者都不足以判断哪一方更快。
 
 ## 开放问题

@@ -3,7 +3,7 @@ title: 自我修改的 agent
 type: concept
 summary: agent 改写自己的代码，包括工具、提示和工作流，用 benchmark 上的实测结果决定改动是否保留
 topics: [rsi]
-aliases: [self-modifying agent, self-referential self-improvement, self-improving coding agent, 自指的自我改进, 自我改进的编码 agent]
+aliases: [self-modifying agent, self-referential self-improvement, 自指的自我改进]
 added: 2026-11-27
 status: emerging
 relations:

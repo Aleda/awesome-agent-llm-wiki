@@ -50,11 +50,11 @@ type: raw
 - [Lost in the Middle](papers/202307-lost-in-the-middle.md) — 相关信息放在长输入中间时模型表现最差，呈 U 形曲线；扩了窗口的版本并不更会用上下文
 - [LLMLingua](papers/202310-llmlingua.md) — 用小模型的困惑度由粗到细删减提示词，GSM8K 上压缩 20 倍只掉 1.5 个点，适用于黑盒 API
 - [MemGPT](papers/202310-memgpt.md) — 借操作系统的虚拟内存，让模型用函数调用在上下文和外部存储之间换入换出，突破固定窗口
-- [A-MEM](papers/202502-a-mem.md) — 仿 Zettelkasten 把每条记忆写成带标签的笔记，写入时自动建链并改写相关旧笔记
-- [Mem0](papers/202504-mem0.md) — 从每轮对话抽取事实，由 LLM 对相似旧记忆选择增删改，LOCOMO 上接近全文效果且延迟低得多
 - [Self-Rewarding Language Models](papers/202401-self-rewarding-language-models.md) — 同一个模型既生成回答又用 LLM-as-a-Judge 给自己打分，组成偏好对做迭代 DPO，评判能力也随之提升
 - [SWE-agent](papers/202405-swe-agent.md) — 把 LM agent 当作新一类用户，为它设计搜索、看文件和带 linter 的编辑命令，同一模型解决率明显提高
 - [The AI Scientist](papers/202408-ai-scientist.md) — LLM 从想法、查新、写代码跑实验到写论文和自动评审一条龙做 ML 研究，每篇约 15 美元
+- [A-MEM](papers/202502-a-mem.md) — 仿 Zettelkasten 把每条记忆写成带标签的笔记，写入时自动建链并改写相关旧笔记
+- [Mem0](papers/202504-mem0.md) — 从每轮对话抽取事实，由 LLM 对相似旧记忆选择增删改，LOCOMO 上接近全文效果且延迟低得多
 - [Darwin Gödel Machine](papers/202505-darwin-godel-machine.md) — coding agent 改写自身代码、实测后存档所有可用变体，SWE-bench 子集从 20% 到 50%
 - [ACE](papers/202510-ace.md) — 把上下文当作逐条积累的 playbook，只做增量更新避免整段重写塌缩，AppWorld 和金融任务上超过提示优化基线
 - [Context Language Models](papers/202609-context-language-models.md) — 把实时上下文镜像成文件，让模型用 Bash 自由编辑，长程任务上更准也更省算力

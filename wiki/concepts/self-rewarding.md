@@ -3,7 +3,7 @@ title: 自我奖励
 type: concept
 summary: 被训练的模型同时充当自己的奖励模型，用 LLM-as-a-Judge 给自己的回答打分，再用这些偏好数据训练自己
 topics: [rsi]
-aliases: [self-rewarding, self-rewarding language models, self-reward, 自奖励]
+aliases: [self-rewarding, self-rewarding training, self-reward, model-as-own-judge, 自奖励]
 added: 2026-11-27
 status: emerging
 relations:

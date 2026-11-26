@@ -22,14 +22,14 @@ by:
   - { name: Jeff Clune, role: author }
 relations:
   - { concept: self-modifying-agent, rel: extends, note: 在 agent 改写自身代码、用 benchmark 验证改动的做法上加入开放式存档：保留所有还能编辑代码的变体，父代按分数和子代数抽样，暂时变差的分支也能继续演化；Gödel Agent 和 STOP 更早，Robeyns et al. 的 Self-Improving Coding Agent 是同期工作 }
-  - { concept: automated-ai-research, rel: extends, note: 把设计 coding agent 这部分 AI 研发交给 agent 自己：读自己的评测日志、提出改动、改写自己的代码，以 coding benchmark 分数决定改动是否保留；底座模型冻结，不涉及训练 }
+  - { concept: automated-ai-research, rel: extends, note: 把设计 coding agent 这部分 AI 研发交给 agent 自己：读自己的评测日志、提出改动、改写自己的代码，以 coding benchmark 分数决定改动是否保留；底座模型冻结，实验里没有训练 }
 ---
 
 ## 新认知
 
 - **DGM 把 Gödel machine"先证明改动有益再改"的要求换成"改完用 benchmark 测"：作者认为不加限制性假设时无法形式化证明一次修改有益，于是用实验证据代替证明（§1¶2、§3¶1）**，见[自我修改的 agent](../concepts/self-modifying-agent.md#设计空间)。
 - **整套方法押在一个假设上：coding benchmark 的分数同时代表做题能力和自我改进能力，因为改写自己的代码本身就是一次编码任务（§3¶2）；作者把它列为关键假设，并提出可以让任务分布一起演化来去掉这一约束（§1¶3、§6¶3）**，见[自我修改的 agent](../concepts/self-modifying-agent.md#共识与分歧)。
-- **作者报告 80 轮后 SWE-bench 从 20.0% 升到 50.0%，Polyglot 全集从 14.2% 升到 30.7%（§4.4¶1）；同样设置下，修改者固定为初始 agent 的版本到 39.0%，只在最新版本上改的版本到 23.0%（Tab. 1）**，这里的 SWE-bench 是 Verified 的分阶段子集，最多 200 题（§4.2¶2、§4.2¶4），见[自我修改的 agent](../concepts/self-modifying-agent.md#设计空间)。
+- **作者报告 80 轮后 SWE-bench（Verified 的分阶段子集，最多 200 题）从 20.0% 升到 50.0%，Polyglot 50 题子集从 14.0% 升到 38.0%、全集从 14.2% 升到 30.7%；同一 SWE-bench 子集上，修改者固定为初始 agent 的对照到 39.0%，只在最新版本上改的对照到 23.0%（§4.2¶2、§4.2¶4、§4.4¶1、Tab. 1）**，见[自我修改的 agent](../concepts/self-modifying-agent.md#设计空间)。
 - 存档的价值在于保留暂时变差的分支：SWE-bench 上第 4 和第 56 轮的 agent 低于各自父代，之后沿这条路仍演化出超过所有前代的 agent（§4.4¶3）；每轮总选当前最好节点的贪心版本只到 39.7%（Tab. 1），见[自我修改的 agent](../concepts/self-modifying-agent.md#设计空间)。
 - DGM 找到的改进集中在工具和工作流，例如把整文件查看和整文件替换改成按行查看、按字符串替换，以及多次尝试后由另一个模型挑出最好的方案（§4.4¶2），见[自我修改的 agent](../concepts/self-modifying-agent.md#共识与分歧)。
 - 改进在换底座模型后基本还在：SWE-bench 200 题上，换成 Claude 3.7 Sonnet 时初始 agent 19.0%、DGM 找到的 agent 59.5%，换成 o3-mini 时为 23.0% 对 33.0%（§4.4¶5）；但 Polyglot 上换模型只多 1 个点左右（Fig. 7），见[自我修改的 agent](../concepts/self-modifying-agent.md#开放问题)。
@@ -63,7 +63,8 @@ SWE-bench 指 [SWE-bench Verified](../glossary.md#swe-bench-verified)（§4.2¶2
 | Polyglot 50 题子集，80 轮 | 初始 agent 14.0% | 38.0% | （§4.4¶1） |
 | Polyglot 全集 | 初始 agent 14.2% | 30.7% | （§4.4¶1） |
 | 消融，SWE-bench / Polyglot | 无开放式探索 23.0% / 14.0%；无自我改进 39.0% / 28.0%；贪心选父代 39.7% / 30.0% | DGM 50.0% / 38.0% | （Tab. 1） |
-| 人工设计的 agent | SWE-bench 上经核验的开源 SoTA；Polyglot 上的 [Aider](../glossary.md#aider) | 与开源 SoTA 相当；远超 Aider（正文未给数字） | （§4.4¶1） |
+| 人工设计的 agent，SWE-bench 同一 200 题 | 经核验的开源 SoTA OpenHands + CodeAct v2.1 51.0%（附录 E.4，全量 Verified 上为 53.0%） | DGM 50.0%，作者称两者相当 | （§4.4¶1） |
+| 人工设计的 agent，Polyglot 同一子集 | [Aider](../glossary.md#aider)，正文和附录 E.5 都没有给出它在 pass@1 下的分数 | 作者称 DGM 远超 Aider | （§4.4¶1、§4.3¶2） |
 | 换底座模型，SWE-bench 200 题 | 初始 agent：o3-mini 23.0%；Claude 3.7 Sonnet 19.0% | DGM 找到的 agent：33.0%；59.5% | （§4.4¶5） |
 | 换 benchmark | Polyglot 上初始 agent 14.2%；SWE-bench 上初始 agent 20.0% | SWE-bench 上演化的 agent 在 Polyglot 28.9%；Polyglot 上演化的 agent 在 SWE-bench 24.5% | （§4.4¶6） |
 | 生成的 agent 中仍能编辑代码的比例，SWE-bench | 无开放式探索 32.5%；无自我改进 32.5% | 51.3% | （Tab. 2） |
@@ -93,5 +94,5 @@ SWE-bench 指 [SWE-bench Verified](../glossary.md#swe-bench-verified)（§4.2¶2
 
 - 与 [SWE-agent](./202405-swe-agent.md)：DGM 自己找到的编辑工具改进，按行查看、按字符串替换（§4.4¶2），正是 SWE-agent 手工设计 agent-computer interface 时针对的问题，见[面向 agent 的计算机接口](../concepts/agent-computer-interface.md)。论文本身没有把它们和 ACI 联系起来，这是本库的判断。
 - 与 [The AI Scientist](./202408-ai-scientist.md)：两篇有三位共同作者（Cong Lu、Robert Lange、Jeff Clune）。The AI Scientist 在展望里提出让系统以自指的方式直接研究自己的代码（[The AI Scientist](./202408-ai-scientist.md) §9¶9），DGM 在 coding agent 上做了这件事，但研究对象从论文换成了 agent 自己的代码。
-- 与 ADAS：DGM 的"无自我改进"对照就是在本设置下复现 ADAS，修改者始终是初始 agent（§4.3¶1）。作者认为 DGM 的区别是同一个系统既解题又改自己，不需要手工设计的 meta agent（§2¶2）。ADAS 本库未收录。
+- 与 ADAS：DGM 的"无自我改进"对照就是在本设置下复现 ADAS，修改者始终是初始 agent（§4.3¶1）。作者认为 DGM 的区别是由同一个系统解题并修改自己，省去了手工设计的 meta agent（§2¶2）。ADAS 本库未收录。
 - 与 Gödel Agent、STOP 和 Robeyns et al. 的 Self-Improving Coding Agent：作者说这几项工作也用 foundation model 做自我改进，最接近的是同期的 Robeyns et al.，同样让单个 agent 解编码题并修改自己的代码库；DGM 的主要区别是开放式探索循环（§2¶3）。三者本库未收录。

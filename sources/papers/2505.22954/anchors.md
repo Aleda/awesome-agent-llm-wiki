@@ -73,3 +73,4 @@
 - §6¶3: "one could envision an alternative approach that co-evolves the target task distribution"
 - §6¶3: "an exciting future direction is to extend self-modification beyond just prompts or FM workflows, to include more computationally intensive methods, such as rewriting its own training script to update the FM itself"
 - §6¶3: "A key assumption in this work is that coding benchmarks are a good reflection of the agent’s ability to self-improve"
+- §4.3¶2: "For Polyglot, we take the representative agent (Aider)"
