@@ -1,0 +1,62 @@
+<!-- Trimmed, hand-assembled snippet mirroring the real structure of
+     https://arxiv.org/html/2609.37725 (arXiv's LaTeXML HTML output), §5 area.
+     Captures two real-world edge cases missed by the original anchor
+     extractor (task-19_5 defect 2):
+     1. A subsection/subsubsection title containing a nested inline <span>
+        (e.g. a highlighted term) between the ltx_tag number and the rest
+        of the title text, so the whole title is not a single run of plain
+        text before </h3> (affects §5.1 and §5.2 here).
+     2. Table captions whose <figcaption> tag carries an extra `style`
+        attribute after `class="ltx_caption"` (so a `class="...[^"]*">`-
+        style regex requiring `">` right after the class attribute fails),
+        and whose <span> tag-label uses `ltx_tag_figure` (not
+        `ltx_tag_table`) for an actual table caption (Table 1 here) --
+        arXiv's LaTeXML output is inconsistent about which tag class marks
+        a table caption, while Table 2 uses the "expected" `ltx_tag_table`.
+     Table bodies themselves are omitted (irrelevant to anchor extraction,
+     keeps this fixture small); only the <figure>/<figcaption> wrapper is
+     kept so the parser still sees a real document structure around each
+     caption. -->
+<!DOCTYPE html>
+<html>
+<head><title>Context Language Models</title></head>
+<body>
+<article class="ltx_document">
+
+<section id="S5" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">5 </span>Results</h2>
+<section id="S5.SS1" class="ltx_subsection">
+<h3 class="ltx_title ltx_title_subsection"><span class="ltx_tag ltx_tag_subsection">5.1 </span>Evaluating CLMs <span id="S5.SS1.2" class="ltx_text ltx_font_bold" style="--ltx-fg-color:#0668E1;">Zero-Shot</span> on Long-Horizon Agentic Tasks</h3>
+<section id="S5.SS1.SSS1" class="ltx_subsubsection">
+<h4 class="ltx_title ltx_title_subsubsection"><span class="ltx_tag ltx_tag_subsubsection">5.1.1 </span>Coding and Deep Research Tasks</h4>
+<p class="ltx_p">We evaluate CLMs across long-horizon coding and deep research tasks.</p>
+
+<figure id="S5.T1" class="ltx_figure ltx_align_left ltx_figure_panel ltx_align_top" style="width:144.9pt;">
+<br class="ltx_break ltx_break">
+<table id="S5.T1.1" class="ltx_tabular"><tr><td>trimmed table body</td></tr></table>
+<figcaption class="ltx_caption"><span class="ltx_tag ltx_tag_figure">Table 1: </span><span id="S5.T1.4" class="ltx_text ltx_font_bold">CLMs outperform specialized OpenEvolve evolutionary workflows on mathematical optimization problems.</span>
+Best-of-run scores with Claude 4.6 Sonnet and a 32K context limit, capped at 100 scored attempts or five hours. Arrows indicate the direction of improvement; OE stands for OpenEvolve and SA for subagents.</figcaption>
+</figure>
+
+</section>
+<section id="S5.SS1.SSS2" class="ltx_subsubsection">
+<h4 class="ltx_title ltx_title_subsubsection"><span class="ltx_tag ltx_tag_subsubsection">5.1.2 </span>Open Discovery Problems</h4>
+<p class="ltx_p">Open discovery results follow a similar pattern.</p>
+</section>
+</section>
+
+<section id="S5.SS2" class="ltx_subsection">
+<h3 class="ltx_title ltx_title_subsection"><span class="ltx_tag ltx_tag_subsection">5.2 </span>Learning Better Context-Management Strategies in <span id="S5.SS2.2" class="ltx_text ltx_font_bold" style="--ltx-fg-color:#0668E1;">Context</span> or in <span id="S5.SS2.3" class="ltx_text ltx_font_bold" style="--ltx-fg-color:#0668E1;">Weights</span></h3>
+<p class="ltx_p">CLMs make context management an intrinsic model behavior.</p>
+
+<figure id="S5.T2" class="ltx_table ltx_align_center">
+<figcaption class="ltx_caption" style="font-size:90%;"><span class="ltx_tag ltx_tag_table">Table 2: </span><span id="S5.T2.5" class="ltx_text ltx_font_bold">RL results on BrowseComp-Plus with Qwen3.5-9B.</span>
+Performance before and after training on OpenResearcher. The RL checkpoint is selected on a held-out validation set.</figcaption>
+</figure>
+
+</section>
+</section>
+
+</article>
+</body>
+</html>

@@ -230,6 +230,30 @@ def test_removed_tracked_file_is_an_error(git_repo):
     assert has_error(lint(git_repo, ci=True), "anchors.md")
 
 
+# --- Defect 1 (controller ruling R27): seen.txt / skipped.txt are
+# append-only logs, like anchors.md, not immutable files. ------------------
+
+
+def test_appending_to_seen_txt_is_fine(git_repo):
+    append(git_repo, "sources/seen.txt", "2611.99999")
+    assert not has_error(lint(git_repo, ci=True), "seen.txt")
+
+
+def test_editing_existing_seen_txt_line_is_an_error(git_repo):
+    edit_line(git_repo, "sources/seen.txt", 0, "changed-line")
+    assert has_error(lint(git_repo, ci=True), "seen.txt")
+
+
+def test_appending_to_skipped_txt_is_fine(git_repo):
+    append(git_repo, "sources/skipped.txt", "2611.99999")
+    assert not has_error(lint(git_repo, ci=True), "skipped.txt")
+
+
+def test_editing_existing_skipped_txt_line_is_an_error(git_repo):
+    edit_line(git_repo, "sources/skipped.txt", 0, "changed-line")
+    assert has_error(lint(git_repo, ci=True), "skipped.txt")
+
+
 def test_not_a_git_repo_skips_append_only_check(repo):
     # repo is a plain directory copy, never `git init`-ed: mutating a
     # "tracked" source file must not raise or report an append-only error.

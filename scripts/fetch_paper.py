@@ -235,17 +235,18 @@ def _truncate(text: str, max_chars: int) -> str:
 SECTION_HEADING_HTML_RE = re.compile(
     r'<h[0-9]\s+class="ltx_title ltx_title_(section|subsection|subsubsection)">'
     r'<span class="ltx_tag ltx_tag_(?:section|subsection|subsubsection)">([^<]*)</span>'
-    r"([^<]*)</h[0-9]>"
+    r"(.*?)</h[0-9]>",
+    re.S,
 )
 FIGURE_CAPTION_HTML_RE = re.compile(
-    r'<figcaption class="ltx_caption[^"]*">\s*'
+    r'<figcaption class="ltx_caption[^"]*"[^>]*>\s*'
     r'<span class="ltx_tag ltx_tag_figure">Figure\s+(\d+):\s*</span>'
     r"(.*?)</figcaption>",
     re.S,
 )
 TABLE_CAPTION_HTML_RE = re.compile(
-    r'<figcaption class="ltx_caption[^"]*">\s*'
-    r'<span class="ltx_tag ltx_tag_table">Table\s+(\d+):\s*</span>'
+    r'<figcaption class="ltx_caption[^"]*"[^>]*>\s*'
+    r'<span class="ltx_tag ltx_tag_(?:figure|table)">Table\s+(\d+):\s*</span>'
     r"(.*?)</figcaption>",
     re.S,
 )

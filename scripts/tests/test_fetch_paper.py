@@ -43,10 +43,16 @@ FIXTURES = SCRIPTS_DIR / "tests" / "fixtures"
 ATOM_XML = (FIXTURES / "arxiv_atom.xml").read_text(encoding="utf-8")
 HTML = (FIXTURES / "arxiv_html_snippet.html").read_text(encoding="utf-8")
 PDF_TEXT = (FIXTURES / "pdf_text.txt").read_text(encoding="utf-8")
+HTML_S5 = (FIXTURES / "arxiv_html_snippet_s5.html").read_text(encoding="utf-8")
 
 
 def test_fixtures_are_small():
-    for name in ("arxiv_atom.xml", "arxiv_html_snippet.html", "pdf_text.txt"):
+    for name in (
+        "arxiv_atom.xml",
+        "arxiv_html_snippet.html",
+        "arxiv_html_snippet_s5.html",
+        "pdf_text.txt",
+    ):
         assert (FIXTURES / name).stat().st_size < 30 * 1024
 
 
@@ -110,6 +116,60 @@ def test_anchors_from_html_has_fig_and_tab():
 
 def test_figure_caption_truncated():
     assert all(len(l) <= 140 for l in anchors_from_html(HTML) if l.startswith("- Fig."))
+
+
+# ---------------------------------------------------------------------------
+# Defect 2 (task-19_5): a subsection/subsubsection title containing a nested
+# inline <span> between the ltx_tag number and the rest of the title text
+# (arxiv_html_snippet_s5.html's §5.1 / §5.2), and table captions whose
+# <figcaption> carries an extra attribute after class="ltx_caption" and/or
+# labels the caption span `ltx_tag_figure` instead of `ltx_tag_table`
+# (real-world inconsistency seen in arXiv 2609.37725's Table 1 vs Table 2).
+# ---------------------------------------------------------------------------
+
+
+def test_anchors_from_html_handles_nested_span_in_subsection_title():
+    anchors = anchors_from_html(HTML_S5)
+    assert "## §5 Results" in anchors
+    assert "## §5.1 Evaluating CLMs Zero-Shot on Long-Horizon Agentic Tasks" in anchors
+    assert "## §5.1.1 Coding and Deep Research Tasks" in anchors
+    assert "## §5.1.2 Open Discovery Problems" in anchors
+    assert (
+        "## §5.2 Learning Better Context-Management Strategies in Context or in Weights"
+        in anchors
+    )
+
+
+def test_anchors_from_html_table_captions_regardless_of_tag_class_and_extra_attrs():
+    anchors = anchors_from_html(HTML_S5)
+    tab1 = next(a for a in anchors if a.startswith("- Tab. 1 —"))
+    tab2 = next(a for a in anchors if a.startswith("- Tab. 2 —"))
+    assert tab1 == (
+        "- Tab. 1 — CLMs outperform specialized OpenEvolve evolutionary "
+        "workflows on mathematical optimization problems."
+    )
+    assert tab2.startswith("- Tab. 2 — RL results on BrowseComp-Plus with Qwen3.5-9B.")
+
+
+def test_anchors_from_html_s5_sections_in_document_order():
+    anchors = anchors_from_html(HTML_S5)
+    section_anchors = [a for a in anchors if a.startswith("## §")]
+    assert section_anchors == [
+        "## §5 Results",
+        "## §5.1 Evaluating CLMs Zero-Shot on Long-Horizon Agentic Tasks",
+        "## §5.1.1 Coding and Deep Research Tasks",
+        "## §5.1.2 Open Discovery Problems",
+        "## §5.2 Learning Better Context-Management Strategies in Context or in Weights",
+    ]
+
+
+def test_anchors_from_html_s5_fixture_has_no_regression_on_old_cases():
+    # the original fixture's section/fig/tab extraction must be unaffected
+    # by the nested-span / table-class generalization.
+    anchors = anchors_from_html(HTML)
+    assert anchors[:2] == ["## §1 Introduction", "## §3.2 Method"]
+    assert any(a.startswith("- Fig. 1 —") for a in anchors)
+    assert any(a.startswith("- Tab. 2 —") for a in anchors)
 
 
 def test_pdf_fallback():

@@ -577,13 +577,20 @@ def git_show_head(repo_root: str, relpath: str) -> str | None:
     return result.stdout
 
 
+APPEND_ONLY_FILENAMES = {"anchors.md", "seen.txt", "skipped.txt"}
+
+
 def check_append_only(root: Path) -> list[Issue]:
     """error: a file tracked under `sources/` at HEAD has been modified
-    in the working tree. For `anchors.md`, only an append is allowed —
-    every line HEAD had must still be there, in order, as a prefix of the
-    working copy's lines (lint reports a single error per changed file,
-    not per line). Skipped entirely (no issues, no crash) when `root`
-    isn't a git working tree — the brief's fixtures are not git repos.
+    in the working tree. For an append-only file (`anchors.md`, and the
+    two run logs `seen.txt`/`skipped.txt` — `APPEND_ONLY_FILENAMES`, data-
+    driven so a new log can be added in one place), only an append is
+    allowed — every line HEAD had must still be there, in order, as a
+    prefix of the working copy's lines (lint reports a single error per
+    changed file, not per line). Any other tracked `sources/` file must be
+    byte-identical to HEAD. Skipped entirely (no issues, no crash) when
+    `root` isn't a git working tree — the brief's fixtures are not git
+    repos.
     """
     repo_root = git_toplevel(root)
     if repo_root is None:
@@ -618,12 +625,16 @@ def check_append_only(root: Path) -> list[Issue]:
             continue
         working_text = abs_path.read_text(encoding="utf-8")
 
-        if abs_path.name == "anchors.md":
+        if abs_path.name in APPEND_ONLY_FILENAMES:
             head_lines = head_text.splitlines()
             working_lines = working_text.splitlines()
             if working_lines[: len(head_lines)] != head_lines:
                 issues.append(
-                    ("error", working_relpath, "anchors.md changed or removed an existing line (append-only)")
+                    (
+                        "error",
+                        working_relpath,
+                        f"{abs_path.name} changed or removed an existing line (append-only)",
+                    )
                 )
         else:
             if working_text != head_text:
