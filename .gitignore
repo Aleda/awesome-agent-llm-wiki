@@ -4,6 +4,7 @@ site/dist/
 site/.generated/
 site/src/content/docs/
 site/public/data/
+site/.astro/
 *.m4a
 *.mp3
 *.wav

@@ -1,0 +1,32 @@
+/*
+ * Shared design tokens for the graph, meta cards and hover cards.
+ * Starlight sets data-theme on <html>; light is the default.
+ */
+:root,
+:root[data-theme='light'] {
+  --c-topic: #3730a3; /* deep indigo */
+  --c-concept: #0f766e; /* teal */
+  --c-paper: #1d4ed8; /* blue */
+  --c-blog: #b45309; /* amber */
+  --c-video: #be123c; /* rose */
+  --c-podcast: #6d28d9; /* violet */
+  --c-entity: #475569; /* slate */
+
+  --card-bg: #ffffff;
+  --card-border: rgba(15, 23, 42, 0.1);
+  --card-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 4px 12px rgba(15, 23, 42, 0.06);
+}
+
+:root[data-theme='dark'] {
+  --c-topic: #a5b4fc;
+  --c-concept: #5eead4;
+  --c-paper: #93c5fd;
+  --c-blog: #fcd34d;
+  --c-video: #fda4af;
+  --c-podcast: #c4b5fd;
+  --c-entity: #cbd5e1;
+
+  --card-bg: #1e2230;
+  --card-border: rgba(226, 232, 240, 0.12);
+  --card-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 6px 16px rgba(0, 0, 0, 0.35);
+}

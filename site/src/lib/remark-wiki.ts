@@ -1,0 +1,324 @@
+/**
+ * remark plugin that turns wiki Markdown into site links (Task 6).
+ *
+ * - Relative `.md` links to wiki pages become site routes (`toRoute`), with
+ *   the `#fragment` kept, redirects followed, and a `data-preview` pointing
+ *   at the page's preview JSON. Links into `wiki/glossary` get the glossary
+ *   preview and a `data-term`. Links into `sources/` are rewritten to their
+ *   route but carry no preview. Internal links whose target does not exist
+ *   are replaced by their text.
+ * - Citation tokens inside `（…）` (`[HH:MM:SS]`, `§3.2`, `Fig. 4`, ...)
+ *   become `<a class="cite">` links when the current source's anchor table
+ *   (`<anchorsDir>/<source_dir>.json`) has the key; unknown keys stay text.
+ *
+ * Current source: the page's own `source_dir`; a paragraph starting with
+ * `来源：` switches it to the `source_dir` of its first link's target until
+ * the next `来源：` paragraph; a link inside the same `（…）` group as a
+ * citation overrides it for that citation.
+ *
+ * Index and anchor JSON are read once per process (cached by path).
+ */
+import fs from 'node:fs';
+import path from 'node:path';
+import type { Link, Parent, PhrasingContent, Root, Text } from 'mdast';
+import type { Plugin } from 'unified';
+import { visit } from 'unist-util-visit';
+import { findCitations } from './anchors';
+import { resolveLink, termSlug, type GeneratedIndex, type PageId } from './content-index';
+import { BASE, toRoute } from './routes';
+
+export interface RemarkWikiOptions {
+  /** Path to `.generated/index.json`; relative paths resolve against `process.cwd()`. */
+  indexPath: string;
+  /** Directory holding `<source_dir>.json` anchor tables; relative to `process.cwd()` if not absolute. */
+  anchorsDir: string;
+}
+
+type AnchorTable = Record<string, { text: string; href: string }>;
+
+const GLOSSARY_ID = 'wiki/glossary';
+const DOCS_MARKER = '/src/content/docs/';
+
+const indexCache = new Map<string, GeneratedIndex>();
+const anchorCache = new Map<string, AnchorTable | null>();
+
+function loadIndex(indexPath: string): GeneratedIndex {
+  const abs = path.resolve(indexPath);
+  let index = indexCache.get(abs);
+  if (index === undefined) {
+    let raw: string;
+    try {
+      raw = fs.readFileSync(abs, 'utf8');
+    } catch {
+      throw new Error(`remarkWiki: cannot read ${abs}; run the prepare step first`);
+    }
+    index = JSON.parse(raw) as GeneratedIndex;
+    indexCache.set(abs, index);
+  }
+  return index;
+}
+
+function loadAnchors(anchorsDir: string, sourceKey: string): AnchorTable | null {
+  const base = path.resolve(anchorsDir);
+  const abs = path.resolve(base, `${sourceKey}.json`);
+  const rel = path.relative(base, abs);
+  if (rel.startsWith('..') || path.isAbsolute(rel)) return null;
+  if (!anchorCache.has(abs)) {
+    let table: AnchorTable | null = null;
+    try {
+      table = JSON.parse(fs.readFileSync(abs, 'utf8')) as AnchorTable;
+    } catch {
+      table = null; // no anchor file for this source: citations stay text
+    }
+    anchorCache.set(abs, table);
+  }
+  return anchorCache.get(abs) ?? null;
+}
+
+/**
+ * Turn a vfile path into a docs-relative page id (`wiki/papers/x`).
+ * Astro passes an absolute path under `src/content/docs/`; tests pass the
+ * docs-relative path directly. Returns `null` when neither applies.
+ */
+export function docsPageId(filePath: string | undefined): PageId | null {
+  if (!filePath) return null;
+  const posix = filePath.split(path.sep).join('/');
+  let rel: string;
+  const marker = posix.lastIndexOf(DOCS_MARKER);
+  if (marker !== -1) {
+    rel = posix.slice(marker + DOCS_MARKER.length);
+  } else if (path.posix.isAbsolute(posix) || path.isAbsolute(filePath)) {
+    return null;
+  } else {
+    rel = posix.replace(/^\.\//, '');
+  }
+  return rel.replace(/\.mdx?$/, '');
+}
+
+type Target =
+  | { kind: 'page'; id: PageId; hash: string }
+  | { kind: 'source'; id: PageId; hash: string }
+  | { kind: 'missing' };
+
+/** Follow redirects (bounded, cycle-safe) to the final page id. */
+function followRedirects(index: GeneratedIndex, id: PageId): PageId {
+  let current = id;
+  for (let i = 0; i < 32 && index.redirects[current] !== undefined; i++) {
+    current = index.redirects[current];
+  }
+  return current;
+}
+
+/** Classify a link href. `null` means external or non-`.md`: leave untouched. */
+function resolveTarget(index: GeneratedIndex, fromId: PageId, href: string): Target | null {
+  const resolved = resolveLink(fromId, href);
+  if (resolved === null) return null;
+  const id = followRedirects(index, resolved.id);
+  if (index.pages[id] !== undefined) return { kind: 'page', id, hash: resolved.hash };
+  if (id.startsWith('sources/')) return { kind: 'source', id, hash: resolved.hash };
+  return { kind: 'missing' };
+}
+
+function sourceOf(index: GeneratedIndex, target: Target | null): string | undefined {
+  return target?.kind === 'page' ? index.pages[target.id].sourceKey : undefined;
+}
+
+interface TextSeg {
+  start: number;
+  end: number;
+  node: Text;
+  parent: Parent;
+}
+
+interface LinkSeg {
+  start: number;
+  end: number;
+  node: Link;
+}
+
+/** Flatten a block's inline children into one string plus segment offsets. */
+function flatten(block: Parent): { text: string; texts: TextSeg[]; links: LinkSeg[] } {
+  let text = '';
+  const texts: TextSeg[] = [];
+  const links: LinkSeg[] = [];
+
+  const walk = (parent: Parent, inLink: boolean) => {
+    for (const child of parent.children as PhrasingContent[]) {
+      if (child.type === 'text') {
+        if (!inLink) texts.push({ start: text.length, end: text.length + child.value.length, node: child, parent });
+        text += child.value;
+      } else if (child.type === 'inlineCode') {
+        text += child.value;
+      } else if (child.type === 'link') {
+        const start = text.length;
+        walk(child, true);
+        links.push({ start, end: text.length, node: child });
+      } else if (child.type === 'break') {
+        text += '\n';
+      } else if ('children' in child) {
+        walk(child as Parent, inLink || child.type === 'linkReference');
+      }
+    }
+  };
+  walk(block, false);
+  return { text, texts, links };
+}
+
+interface CiteNode {
+  type: 'wikiCite';
+  children: Text[];
+  data: { hName: 'a'; hProperties: Record<string, unknown> };
+}
+
+interface Replacement {
+  start: number; // offset within the text node
+  end: number;
+  node: CiteNode;
+}
+
+interface BareDirective {
+  type: 'textDirective';
+  name: string;
+  attributes?: Record<string, unknown> | null;
+  children: unknown[];
+}
+
+/**
+ * Starlight enables remark-directive, so `[00:01:02]` parses as text `[00`,
+ * a text directive named `01`, then `:02]`... Starlight turns unhandled
+ * directives back into text only after user plugins run. Restore bare text
+ * directives (no label, no attributes) to `:name` now and merge adjacent
+ * text nodes, so citation tokens sit inside a single text node.
+ */
+function restoreBareDirectives(tree: Root): void {
+  visit(tree, (node) => {
+    if (!('children' in node)) return;
+    const parent = node as Parent;
+    const merged: Parent['children'] = [];
+    for (const child of parent.children) {
+      let current = child;
+      const d = child as unknown as BareDirective;
+      if (
+        d.type === 'textDirective' &&
+        d.children.length === 0 &&
+        (d.attributes == null || Object.keys(d.attributes).length === 0)
+      ) {
+        current = { type: 'text', value: `:${d.name}` };
+      }
+      const last = merged[merged.length - 1];
+      if (current.type === 'text' && last?.type === 'text') {
+        merged[merged.length - 1] = { type: 'text', value: last.value + current.value };
+      } else {
+        merged.push(current);
+      }
+    }
+    parent.children = merged;
+  });
+}
+
+export const remarkWiki: Plugin<[RemarkWikiOptions], Root> = (opts) => {
+  return (tree, file) => {
+    const fromId = docsPageId(file.path);
+    if (fromId === null) return;
+    const index = loadIndex(opts.indexPath);
+    restoreBareDirectives(tree);
+
+    let current: string | undefined = index.pages[fromId]?.sourceKey;
+
+    // Pass 1: citations (needs original link urls to pick the source).
+    visit(tree, (node) => {
+      if (node.type !== 'paragraph' && node.type !== 'heading' && node.type !== 'tableCell') return;
+      const { text, texts, links } = flatten(node as Parent);
+
+      if (node.type === 'paragraph' && text.trimStart().startsWith('来源：')) {
+        current = links.length > 0 ? sourceOf(index, resolveTarget(index, fromId, links[0].node.url)) : undefined;
+      }
+
+      const byNode = new Map<Text, { seg: TextSeg; reps: Replacement[] }>();
+      for (const cite of findCitations(text)) {
+        const seg = texts.find((s) => s.start <= cite.start && cite.end <= s.end);
+        if (seg === undefined) continue;
+
+        const groupStart = text.lastIndexOf('（', cite.start);
+        const groupEnd = text.indexOf('）', cite.end);
+        const inGroup = links.filter((l) => l.start > groupStart && l.end <= groupEnd);
+        const preceding = inGroup.filter((l) => l.end <= cite.start);
+        const groupLink = preceding.length > 0 ? preceding[preceding.length - 1] : inGroup[0];
+        const source =
+          (groupLink && sourceOf(index, resolveTarget(index, fromId, groupLink.node.url))) ?? current;
+        if (source === undefined) continue;
+
+        const anchor = loadAnchors(opts.anchorsDir, source)?.[cite.key];
+        if (anchor === undefined) continue;
+
+        const entry = byNode.get(seg.node) ?? { seg, reps: [] };
+        entry.reps.push({
+          start: cite.start - seg.start,
+          end: cite.end - seg.start,
+          node: {
+            type: 'wikiCite',
+            children: [{ type: 'text', value: text.slice(cite.start, cite.end) }],
+            data: {
+              hName: 'a',
+              hProperties: {
+                className: ['cite'],
+                href: anchor.href,
+                dataPreview: `${BASE}/data/anchors/${source}.json`,
+                dataKey: cite.key,
+              },
+            },
+          },
+        });
+        byNode.set(seg.node, entry);
+      }
+
+      for (const { seg, reps } of byNode.values()) {
+        const value = seg.node.value;
+        const parts: Array<Text | CiteNode> = [];
+        let pos = 0;
+        for (const rep of reps.sort((a, b) => a.start - b.start)) {
+          if (rep.start > pos) parts.push({ type: 'text', value: value.slice(pos, rep.start) });
+          parts.push(rep.node);
+          pos = rep.end;
+        }
+        if (pos < value.length) parts.push({ type: 'text', value: value.slice(pos) });
+        const at = seg.parent.children.indexOf(seg.node);
+        seg.parent.children.splice(at, 1, ...(parts as unknown as PhrasingContent[]));
+      }
+    });
+
+    // Pass 2: rewrite internal links.
+    visit(tree, 'link', (node, idx, parent) => {
+      const target = resolveTarget(index, fromId, node.url);
+      if (target === null) return;
+      if (target.kind === 'missing') {
+        if (parent === undefined || idx === undefined) return;
+        parent.children.splice(idx, 1, ...node.children);
+        return idx;
+      }
+      const href = toRoute(target.id, target.hash);
+      const props: Record<string, unknown> = { href };
+      if (target.kind === 'page') {
+        if (target.id === GLOSSARY_ID) {
+          let term = target.hash.slice(1);
+          try {
+            term = decodeURIComponent(term);
+          } catch {
+            // keep the raw fragment
+          }
+          if (term !== '') {
+            props.dataPreview = `${BASE}/data/glossary.json`;
+            props.dataTerm = termSlug(term);
+          }
+        } else if (index.pages[target.id].type !== 'raw') {
+          props.dataPreview = `${BASE}/data/previews/${target.id}.json`;
+        }
+      }
+      node.url = href;
+      // hProperties.href keeps non-ASCII fragments (`#定义`) as written, matching heading ids.
+      node.data = { ...node.data, hProperties: { ...(node.data?.hProperties ?? {}), ...props } };
+    });
+  };
+};
+
+export default remarkWiki;
