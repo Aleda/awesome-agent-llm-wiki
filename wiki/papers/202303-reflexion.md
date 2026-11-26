@@ -28,7 +28,7 @@ relations:
 
 ## 新认知
 
-- **Reflexion 把强化学习里的标量奖励换成 LLM 写的一段文字反思，存进记忆，在同一任务的下一次尝试中作为上下文读回，作者把这样的策略看作"记忆内容加 LLM 参数"，称之为 verbal reinforcement（§1¶2、§1¶6）**，本库据此新建[语言反馈强化](../concepts/verbal-reinforcement.md)并把 Reflexion 记为最早来源。
+- **Reflexion 把标量奖励换成 LLM 写的文字反思，在同一任务的下一次尝试中读回，作者把这称为 verbal reinforcement，策略就是"记忆内容加 LLM 参数"（§1¶2、§1¶6）**，本库据此新建[语言反馈强化](../concepts/verbal-reinforcement.md)。
 - **它和[记忆笔记](../concepts/memory-notes.md#定义)管的是不同范围：所有实验都在同一任务的多次尝试之间读回反思（§4.1¶1、§4.2¶3、Fig. 7），记忆只留最近 1–3 条（§3¶6），论文没有测反思能否帮到另一个任务**，所以本库不把它记为记忆笔记的最早来源。
 - 反思的增量要和"重看上一条轨迹"分开算：HotPotQA 上在只附上一条轨迹的对照组之上再加反思，又高 8 个点（§4.2¶4）；HumanEval Rust 最难的 50 题上只看测试反馈、不写反思，结果与基线同为 0.60（Tab. 3），见[语言反馈强化](../concepts/verbal-reinforcement.md#设计空间)。
 - 成败信号从哪来决定了结论能推多远：HotPotQA 用对照标准答案的精确匹配判断对错（§4.2¶2），ALFWorld 由环境报告任务是否完成、用启发式规则或 LLM 分类判断何时算失败（§4.1¶1），只有编程任务靠模型自己写的单元测试（§4.3¶2），见[语言反馈强化](../concepts/verbal-reinforcement.md#共识与分歧)。
@@ -59,13 +59,14 @@ LLM 能把一条失败轨迹和一个二值信号"放大"成具体的文字建�
 | 设置 | 基线 | 结果 | 锚点 |
 |---|---|---|---|
 | HumanEval Python | 此前 SOTA 65.8（CodeT + GPT-3.5）；GPT-4 单次采样 80.1 | 91.0 | （Tab. 1） |
-| HumanEval Rust（最难的 50 题） | GPT-4 60.0 | 68.0 | （Tab. 1） |
+| HumanEval Rust（最难的 50 题） | GPT-4 60.0 | 68.0 | （Tab. 1、Tab. 2） |
 | MBPP Python / Rust | GPT-4 80.1 / 70.9 | 77.1 / 75.4 | （Tab. 1） |
 | [LeetcodeHardGym](../glossary.md#leetcodehardgym) Python | GPT-4 7.5 | 15.0 | （Tab. 1） |
 | 自写测试全过但答案错的比例 | — | HumanEval Python 0.01，MBPP Python 0.16 | （Tab. 2） |
 | ALFWorld 134 个环境，ReAct 作 Actor、启发式触发反思 | ReAct 自身重试在第 6–7 次尝试之间停止提升，幻觉率停在 22% | 130 / 134；12 次尝试累计绝对提升 22% | （§4.1¶3、§4.1¶4、§1¶5） |
 | HotPotQA 100 题，ReAct 作 Actor | text-davinci-003 0.30；gpt-3.5-turbo 0.26；gpt-4 0.39 | 0.55；0.38；0.51 | （Tab. 5） |
 | HotPotQA 100 题，CoT 加标准上下文 | text-davinci-003 0.60；gpt-3.5-turbo 0.57；gpt-4 0.68 | 0.77；0.71；0.80 | （Tab. 5） |
+| HotPotQA，摘要和引言的头条数字 | 强基线 | 提升 20%；Tab. 5 没有哪一行正好对应这个数 | （§1¶5、§4¶1） |
 | HotPotQA 消融 | 只附上一条轨迹 | 再加反思高 8 个点 | （§4.2¶4） |
 | HumanEval Rust 最难 50 题消融 | 基线 0.60 | 去掉自写测试 0.52；去掉反思 0.60；完整 0.68 | （Tab. 3） |
 | starchat-beta，HumanEval Python，8 次平均 | 0.26 | 0.26 | （Tab. 4） |
