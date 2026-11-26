@@ -25,7 +25,7 @@ order: 3
 
 ### 自动化研究
 
-- [自动化 AI 研究](../concepts/automated-ai-research.md)：把 AI 研发的执行、设计和选题逐级交给 AI，直到端到端做研究、构建自己的后继者；端到端论文 agent（The AI Scientist 一类）待录入。
+- [自动化 AI 研究](../concepts/automated-ai-research.md)：把 AI 研发的执行、设计和选题逐级交给 AI，直到端到端做研究、构建自己的后继者；端到端论文 agent（The AI Scientist 一类）待录入。谁先受益有分歧：头部实验室的复利加速，还是没有历史 infra 包袱的 NeoLab。
 - 研究工程能力的评测：复现已发表的结果、完成 ML 工程任务。
 
 ### 度量与治理
@@ -37,7 +37,8 @@ order: 3
 ## 关键争论
 
 - 闭环 RSI 是否等于 takeoff：AI 参与改进自身，和能力快速且难以控制地增长，中间还隔着哪些条件，如算力、数据和评测瓶颈。
-- 评测器瓶颈：现有自我改进方法依赖可以自动判定的分数，在没有可靠评测器的任务上是否成立。
+- 评测器瓶颈：现有自我改进方法依赖可以自动判定的分数，在没有可靠评测器的任务上是否成立。NeoCognition 联创谷雨认为，数学开放问题被 informal 方法接连解决，说明不靠 Lean 一类形式化验证提供信号也能走得很远（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:13:16]–[00:14:16]）；但数学题有明确对错，这对选研究目标这类没有标准答案的判断能说明多少，播客没有讨论。
+- 先发者的积累是资产还是负担：Anthropic 描述的加速发生在头部实验室自己的流程里，并判断最可能的前景是实验室效率复利增长（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶8）。谷雨认为 AI 写 infra 和 recipe 的能力超过人之后，头部公司的历史 infra 会成为负担，NeoLab 可能加速更快（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:02:04]–[00:03:05]），见[自动化 AI 研究](../concepts/automated-ai-research.md#共识与分歧)。
 - 加速有多少来自 AI：研究效率的提升里，有多少能归因于 AI 系统本身，多少来自工具链和人的组织方式。Anthropic 用合入代码占比和人均代码量等内部数据论证加速已经发生（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §2¶4），这些指标量的是产出，作者也承认行数高估生产率（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §2¶5），见[AI 研发加速度量](../concepts/ai-rd-uplift-measurement.md#共识与分歧)。
 - 研究品味能否自动化：反方认为仍在人手里的选题判断最重要（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶1）；Anthropic 认为即使不能自动化，加速也会复利（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶3），并设想了从趋势停滞到完全递归自我改进的三种前景（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §4¶7），见[AI 研发中的人类瓶颈](../concepts/human-bottleneck-in-ai-rd.md#三种前景)。
 - 放缓是否可行：Anthropic 认为单方面暂停只会换掉领跑者（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §5¶4），主张以可核实为前提的协调放缓（[Anthropic blog](../blogs/20260918-anthropic-when-ai-builds-itself.md) §5¶2），见[可验证的协调放缓](../concepts/verifiable-coordinated-slowdown.md)。

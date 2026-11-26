@@ -19,20 +19,28 @@
     260,
     994
   ],
+  "wiki/concepts/memory-notes": [
+    -104,
+    -3
+  ],
   "wiki/concepts/model-managed-context": [
-    -60,
+    -61,
     -747
   ],
   "wiki/concepts/semantic-state-space-model": [
     161,
     -796
   ],
+  "wiki/concepts/streaming-task-evaluation": [
+    -1257,
+    4
+  ],
   "wiki/concepts/success-gated-efficiency-reward": [
     206,
     -842
   ],
   "wiki/concepts/suffix-cache-reuse": [
-    37,
+    36,
     -743
   ],
   "wiki/concepts/verifiable-coordinated-slowdown": [
@@ -41,10 +49,10 @@
   ],
   "wiki/entities/anthropic": [
     60,
-    930
+    931
   ],
   "wiki/entities/jack-clark": [
-    79,
+    80,
     902
   ],
   "wiki/entities/meta": [
@@ -53,10 +61,10 @@
   ],
   "wiki/entities/nvidia": [
     -12,
-    -751
+    -750
   ],
   "wiki/entities/uw": [
-    -150,
+    -151,
     -676
   ],
   "wiki/papers/202609-context-language-models": [
@@ -66,6 +74,10 @@
   "wiki/papers/202611-you-dont-need-long-context": [
     25,
     -668
+  ],
+  "wiki/podcasts/20261108-crossing-gu-yu": [
+    -234,
+    1300
   ],
   "wiki/topics/agent": [
     0,
@@ -88,7 +100,7 @@
     1000
   ],
   "wiki/videos/20261125-agent-deep-research-clm": [
-    -132,
+    -133,
     -768
   ]
 }

@@ -5,7 +5,7 @@ summary: 把 AI 研发的执行、设计和选题逐级交给 AI，直到 AI 能
 topics: [rsi]
 aliases: [automated AI R&D, AI R&D automation, automated researcher, closing the loop, AI 自动化 AI 研发]
 added: 2026-11-27
-status: emerging
+status: established
 relations:
   - { topic: rsi, rel: part-of }
 ---
@@ -40,9 +40,11 @@ relations:
 - Anthropic 认为执行层已大体可以交给 Claude，差距集中在选择目标的判断（§2¶2），见 [AI 研发中的人类瓶颈](human-bottleneck-in-ai-rd.md)。
 - 反方认为仍在人手里的选题判断才最重要（§4¶1）；Anthropic 认为 AI 进展大多是增量工作，这类工作正是 Claude 擅长的，所以推动前沿的工作大多可以自动化（§4¶2）。
 - 本库判断：Anthropic 的自动化研究员做的是问题和评分规则都由人给定的任务（§2¶13），能自动打分的问题最适合自动化；没有可靠评测器的研究问题能否同样交给 AI，原文没有给证据。
+- 谁从中受益：Anthropic 认为最可能的前景是 AI 实验室效率持续复利增长（§4¶8），它描述的加速发生在头部实验室自己的流程里（§2¶4）。NeoCognition 联创谷雨认为，AI 写训练 infra 和 recipe 的能力超过人之后，头部模型公司积累的 infra 和 recipe 反而会成为负担，从零开始的 NeoLab 能让 AI 随时重搜、随时丢弃，可能加速更快（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:02:04]–[00:03:05]）；他同时承认 NeoLab 要做 full stack 训练仍需要大量的钱（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:03:05]）。谷雨的证据是一则转述的国内模型厂案例（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:03:05]），Anthropic 的证据是外部无法复核的内部数据，两者都不足以判断哪一方更快。
 
 ## 开放问题
 
 - 在没有自动评分器的开放研究问题上，自动化研究员能否成立？
 - 小规模问题上的结果怎样迁移到生产规模模型（§2¶13）？
 - 委托到"决定做什么"这一层之后，人保留哪些控制点才算足够？
+- 先发者积累的训练 infra 和流程，在 AI 接管研发执行之后是资产还是负担（[播客页](../podcasts/20261108-crossing-gu-yu.md) [00:02:04]）？

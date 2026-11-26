@@ -24,6 +24,8 @@ type: raw
 - [AI 研发加速度量](concepts/ai-rd-uplift-measurement.md) — 用外部基准、内部产出和受控研究任务，衡量 AI 把 AI 研发本身加快了多少
 - [AI 研发中的人类瓶颈](concepts/human-bottleneck-in-ai-rd.md) — 执行环节交给 AI 后，人工审查和定研究方向成为限制整体研发速度的环节
 - [可验证的协调放缓](concepts/verifiable-coordinated-slowdown.md) — 多家前沿实验室在能相互核实的前提下，按相同条件同时放缓或暂停前沿 AI 开发
+- [记忆笔记](concepts/memory-notes.md) — agent 把经验写成自然语言笔记并反复改写，下次任务读回，权重不变地实现持续学习
+- [连续任务流评测](concepts/streaming-task-evaluation.md) — 把前后依赖的任务按顺序连成一条流让 agent 边做边学，用来测持续学习能力
 
 ## 论文
 
@@ -40,7 +42,7 @@ type: raw
 
 ## 播客
 
-（待录入）
+- [对话谷雨（十字路口 Crossing）](podcasts/20261108-crossing-gu-yu.md) — NeoCognition 联创谷雨复盘 2026：RSI 是 NeoLab 的机会，记忆笔记式持续学习的上限被低估
 
 ## 实体
 
