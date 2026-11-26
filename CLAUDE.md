@@ -271,7 +271,16 @@ schema 写在 `site/src/content.config.ts`，按 `type` 区分必填字段。缺
 
 ## 脚本命令
 
-抓取脚本（`scripts/fetch_paper.py`、`scripts/fetch_blog.py`、`scripts/fetch_video.py`、`scripts/fetch_podcast.py`）和 `scripts/lint.py` 待 Task 15–17 回填，当前仓库骨架里尚未实现，调用方式以那几个任务完成后的说明为准。
+抓取脚本（`scripts/fetch_paper.py`、`scripts/fetch_blog.py`、`scripts/fetch_video.py`、`scripts/fetch_podcast.py`）待 Task 16–17 回填，当前仓库骨架里尚未实现，调用方式以那几个任务完成后的说明为准。
+
+`scripts/lint.py`（PEP 723 内联依赖，`uv` 自动安装）：
+
+```bash
+uv run scripts/lint.py          # 本地跑全部检查，.cache/ 有全文缓存时还会核验 anchors.md
+uv run scripts/lint.py --ci     # CI 用，跳过 .cache/ 全文核验（CI 不拉取全文）
+```
+
+有 error 级问题时退出码为 1（warn 不影响退出码）。CI（`.github/workflows/pages.yml`）在构建前自动跑 `uv run scripts/lint.py --ci`。
 
 ## 写作约定
 

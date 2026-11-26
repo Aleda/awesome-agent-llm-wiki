@@ -13,6 +13,8 @@ site/playwright-report/
 *.webm
 .lighthouseci/
 .DS_Store
+__pycache__/
+*.pyc
 
 # scratch workspace for planning/task tracking, not part of the wiki
 .superpowers/

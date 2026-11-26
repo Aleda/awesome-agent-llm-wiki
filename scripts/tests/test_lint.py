@@ -1,0 +1,219 @@
+"""Tests for scripts/lint.py (Task 15 brief, Step 1). Each test copies
+`tests/fixtures/mini-repo` into a pytest `tmp_path`, mutates it per the
+test case, then asserts on `lint(...)`'s output. Run with:
+`uv run --with pytest --with pyyaml pytest scripts/tests -q`
+"""
+
+import re
+import shutil
+import subprocess
+from datetime import date
+from pathlib import Path
+
+import pytest
+import yaml
+
+from lint import Issue, lint
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+MINI = REPO_ROOT / "tests/fixtures/mini-repo"
+BROKEN = REPO_ROOT / "tests/fixtures/broken-repo"
+
+
+def has_error(issues: list[Issue], substr: str) -> bool:
+    return any(level == "error" and (substr in msg or substr in path) for level, path, msg in issues)
+
+
+def has_warn(issues: list[Issue], substr: str) -> bool:
+    return any(level == "warn" and (substr in msg or substr in path) for level, path, msg in issues)
+
+
+@pytest.fixture
+def repo(tmp_path: Path) -> Path:
+    """A plain (non-git) copy of mini-repo — the append-only check must
+    skip silently here.
+    """
+    dest = tmp_path / "repo"
+    shutil.copytree(MINI, dest)
+    return dest
+
+
+@pytest.fixture
+def git_repo(tmp_path: Path) -> Path:
+    """A copy of mini-repo initialised as its own git repo, committed, so
+    `git show HEAD:<path>` matches the working tree exactly before a test
+    mutates it.
+    """
+    dest = tmp_path / "git_repo"
+    shutil.copytree(MINI, dest)
+    run = lambda *args: subprocess.run(args, cwd=dest, check=True, capture_output=True)
+    run("git", "init", "-q")
+    run("git", "config", "user.email", "test@example.com")
+    run("git", "config", "user.name", "Test")
+    run("git", "add", "-A")
+    run("git", "commit", "-q", "-m", "initial")
+    return dest
+
+
+def _read_frontmatter(path: Path) -> tuple[dict, str, str]:
+    text = path.read_text(encoding="utf-8")
+    match = re.match(r"^---\n(.*?)\n---\n?(.*)$", text, re.S)
+    assert match is not None
+    return yaml.safe_load(match.group(1)), match.group(2), text
+
+
+def _write_frontmatter(path: Path, fm: dict, body: str) -> None:
+    front = yaml.safe_dump(fm, allow_unicode=True, sort_keys=False, default_flow_style=None)
+    path.write_text(f"---\n{front}---\n{body}", encoding="utf-8")
+
+
+def add_relation(repo: Path, relpath: str, kind: str, target: str) -> None:
+    path = repo / relpath
+    fm, body, _ = _read_frontmatter(path)
+    fm.setdefault("relations", []).append({kind: target, "rel": "proposes"})
+    _write_frontmatter(path, fm, body)
+
+
+def append_insight(repo: Path, relpath: str, bullet: str) -> None:
+    path = repo / relpath
+    text = path.read_text(encoding="utf-8")
+    marker = "## 新认知\n"
+    idx = text.index(marker) + len(marker)
+    # insert right after the heading, before the first existing bullet/blank line
+    new_text = text[:idx] + "\n" + bullet + text[idx:]
+    path.write_text(new_text, encoding="utf-8")
+
+
+def edit_line(repo: Path, relpath: str, line_no: int, new_line: str) -> None:
+    path = repo / relpath
+    lines = path.read_text(encoding="utf-8").split("\n")
+    lines[line_no] = new_line
+    path.write_text("\n".join(lines), encoding="utf-8")
+
+
+def append(repo: Path, relpath: str, line: str) -> None:
+    path = repo / relpath
+    text = path.read_text(encoding="utf-8")
+    if not text.endswith("\n"):
+        text += "\n"
+    path.write_text(text + line + "\n", encoding="utf-8")
+
+
+def write_cache(repo: Path, relpath: str, content: str) -> None:
+    path = repo / ".cache" / relpath
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+
+
+def add_prediction(repo: Path, due: str, status: str) -> None:
+    """Append a `## 可验证的预测` section with one expired-looking row to
+    the sample paper (any source page type works; the paper already has
+    a valid `## 新认知`).
+    """
+    path = repo / "wiki/papers/202611-sample-paper.md"
+    text = path.read_text(encoding="utf-8")
+    table = (
+        "\n\n## 可验证的预测\n\n"
+        "| 预测 | 到期 | 状态 |\n"
+        "|---|---|---|\n"
+        f"| 测试预测会应验 | {due} | {status} |\n"
+    )
+    path.write_text(text + table, encoding="utf-8")
+
+
+def add_alias(repo: Path, relpath: str, alias: str) -> None:
+    path = repo / relpath
+    fm, body, _ = _read_frontmatter(path)
+    fm.setdefault("aliases", []).append(alias)
+    _write_frontmatter(path, fm, body)
+
+
+def test_mini_repo_has_only_the_known_bad_anchor(repo):
+    errs = [i for i in lint(repo, ci=True) if i[0] == "error"]
+    assert [(p, "anchor" in m) for _, p, m in errs] == [
+        ("wiki/videos/20261101-demo-explainer.md", True)
+    ]
+
+
+def test_missing_relation_target(repo):
+    add_relation(repo, "wiki/papers/202611-sample-paper.md", "concept", "nope")
+    assert has_error(lint(repo, ci=True), "nope")
+
+
+def test_insight_without_anchor(repo):
+    append_insight(repo, "wiki/papers/202611-sample-paper.md", "- 一条没有锚点的认知")
+    assert has_error(lint(repo, ci=True), "新认知")
+
+
+def test_changed_anchor_line_is_error(git_repo):
+    edit_line(git_repo, "sources/papers/2611.00001/anchors.md", 0, "## §3.2 Changed")
+    assert has_error(lint(git_repo, ci=True), "anchors.md")
+
+
+def test_appended_anchor_line_is_fine(git_repo):
+    append(git_repo, "sources/papers/2611.00001/anchors.md", "- Tab. 9 — new")
+    assert not has_error(lint(git_repo, ci=True), "anchors.md")
+
+
+def test_cache_verification(repo):
+    write_cache(repo, "papers/2611.00001/paper.md", "no matching text")
+    assert has_error(lint(repo), "§3.2")
+
+
+def test_cache_skipped_in_ci(repo):
+    write_cache(repo, "papers/2611.00001/paper.md", "no matching text")
+    assert not has_error(lint(repo, ci=True), "§3.2")
+
+
+def test_expired_prediction(repo):
+    add_prediction(repo, "2026-01", "待验证")
+    assert has_warn(lint(repo, ci=True, today=date(2026, 11, 26)), "预测")
+
+
+def test_alias_collision(repo):
+    add_alias(repo, "wiki/concepts/isolated-idea.md", "Context Compaction")
+    assert has_warn(lint(repo, ci=True), "别名")
+
+
+def test_unexpired_prediction_is_not_flagged(repo):
+    add_prediction(repo, "2027-01", "待验证")
+    assert not has_warn(lint(repo, ci=True, today=date(2026, 11, 26)), "预测")
+
+
+def test_resolved_prediction_is_not_flagged_even_if_expired(repo):
+    add_prediction(repo, "2026-01", "已应验")
+    assert not has_warn(lint(repo, ci=True, today=date(2026, 11, 26)), "预测")
+
+
+def test_broken_repo_reports_the_three_ts_side_errors(repo, tmp_path):
+    dest = tmp_path / "broken"
+    shutil.copytree(BROKEN, dest)
+    errs = [i for i in lint(dest, ci=True) if i[0] == "error"]
+    assert len(errs) == 3
+    assert has_error(errs, "Bad-Name.md")
+    assert has_error(errs, "summary exceeds")
+    assert has_error(errs, "nonexistent-concept")
+
+
+def test_exit_code_zero_without_errors(repo):
+    # mini-repo's single contractual error (the [09:09:09] bad anchor) is
+    # inside the video page's 时间线 section, not its 新认知; fixing that
+    # one known-bad citation should leave an error-free repo.
+    path = repo / "wiki/videos/20261101-demo-explainer.md"
+    text = path.read_text(encoding="utf-8")
+    path.write_text(text.replace("（[09:09:09]）", "（[00:01:02]）"), encoding="utf-8")
+    issues = lint(repo, ci=True)
+    assert not any(level == "error" for level, _, _ in issues)
+
+
+def test_removed_tracked_file_is_an_error(git_repo):
+    (git_repo / "sources/papers/2611.00001/anchors.md").unlink()
+    assert has_error(lint(git_repo, ci=True), "anchors.md")
+
+
+def test_not_a_git_repo_skips_append_only_check(repo):
+    # repo is a plain directory copy, never `git init`-ed: mutating a
+    # "tracked" source file must not raise or report an append-only error.
+    edit_line(repo, "sources/papers/2611.00001/anchors.md", 0, "## §3.2 Changed")
+    issues = lint(repo, ci=True)
+    assert not has_error(issues, "anchors.md")

@@ -12,7 +12,12 @@
 
 ## 录入命令
 
-（Task 15–17 完成后回填：论文/blog/视频/podcast 的抓取与入库命令。）
+```bash
+uv run scripts/lint.py          # 本地跑全部 lint 检查
+uv run scripts/lint.py --ci     # CI 用，跳过 .cache/ 全文核验
+```
+
+（论文/blog/视频/podcast 的抓取与入库命令：Task 16–17 完成后回填。）
 
 ## 本地开发
 
