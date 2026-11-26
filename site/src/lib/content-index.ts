@@ -1,7 +1,11 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
-import { pageSchema, type PageFrontmatter, type Rel } from './schema';
+import { pageSchema, type PageFrontmatter, type PageType, type Rel } from './schema';
+import type { z } from 'astro/zod';
+import type { bySchema } from './schema';
+
+type By = z.infer<typeof bySchema>;
 
 export type PageId = string;
 
@@ -25,6 +29,42 @@ export interface RepoIndex {
   edges: Edge[];
   backlinks: Map<PageId, Edge[]>;
   redirects: Map<PageId, PageId>;
+}
+
+/**
+ * Per-page summary written to `.generated/index.json` (Task 5's `prepare`
+ * step). A JSON-serialisable projection of a `Page`'s frontmatter, trimmed
+ * to what downstream build steps (graph, cards, search) need so they never
+ * have to re-read `wiki/**` themselves.
+ */
+export interface PageInfo {
+  id: PageId;
+  type: PageType;
+  title: string;
+  summary: string;
+  topics: string[];
+  date?: string;
+  venue?: string;
+  duration?: number;
+  url?: string;
+  by: By[];
+  sourceKey?: string;
+  insights: string[];
+  status?: string;
+  root?: boolean;
+  order?: number;
+}
+
+/**
+ * The on-disk shape of `.generated/index.json`: a JSON-serialisable
+ * projection of `RepoIndex` (Maps become plain objects so it round-trips
+ * through `JSON.stringify`/`JSON.parse`).
+ */
+export interface GeneratedIndex {
+  pages: Record<PageId, PageInfo>;
+  edges: Edge[];
+  backlinks: Record<PageId, Edge[]>;
+  redirects: Record<PageId, PageId>;
 }
 
 /** Thrown by `loadRepo` when one or more pages fail validation; collects every problem found. */
