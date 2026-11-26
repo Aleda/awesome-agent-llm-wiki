@@ -164,6 +164,26 @@ def resolve_entity_target(entity: str) -> str:
     return f"wiki/entities/{entity}"
 
 
+ABS_DRIVE_RE = re.compile(r"^[a-zA-Z]:[\\/]")
+
+
+def validate_source_dir(source_dir: str) -> str | None:
+    """Validate a page's `source_dir` frontmatter value. Returns an error
+    message when invalid, `None` when valid. Mirrors `validateSourceDir`
+    in `site/src/lib/content-index.ts`: rejects absolute paths (POSIX or
+    `C:\\`), any `.`/`..` path segment, and anything not rooted at
+    `sources/`.
+    """
+    if posixpath.isabs(source_dir) or ABS_DRIVE_RE.match(source_dir):
+        return f"must be a relative path under sources/, got absolute path {source_dir}"
+    segments = re.split(r"[\\/]", source_dir)
+    if ".." in segments or "." in segments:
+        return f'must not contain "." or ".." path segments, got {source_dir}'
+    if not source_dir.startswith("sources/"):
+        return f'must start with "sources/", got {source_dir}'
+    return None
+
+
 def extract_md_links(text: str) -> list[tuple[str, str]]:
     """Extract `[text](href)` Markdown links from a block of text, in
     order. Image links (`![alt](src)`) are excluded.
@@ -206,7 +226,9 @@ def source_dir_of_target(pages_by_id: dict[str, Page], redirects: dict[str, str]
     page = pages_by_id.get(resolved_id)
     if page is not None:
         source_dir = page.fm.get("source_dir")
-        return source_dir if isinstance(source_dir, str) else None
+        if not isinstance(source_dir, str) or validate_source_dir(source_dir) is not None:
+            return None
+        return source_dir
     match = SOURCE_RAW_RE.match(target_id)
     if match:
         return match.group(1)
@@ -250,14 +272,18 @@ def citations_with_sources(
     """
     page = pages_by_id[from_id]
     own_source = page.fm.get("source_dir")
-    current: str | None = own_source if isinstance(own_source, str) else None
+    if isinstance(own_source, str) and validate_source_dir(own_source) is None:
+        current: str | None = own_source
+    else:
+        current = None
 
     results: list[tuple[str, str | None]] = []
 
     for block in split_paragraphs(page.body):
         links = extract_md_links(block)
 
-        if block.lstrip().startswith("来源："):
+        is_heading = block.lstrip().startswith("#")
+        if not is_heading and block.lstrip().startswith("来源："):
             if links:
                 target = resolve_link(from_id, links[0][1])
                 current = source_dir_of_target(pages_by_id, redirects, target[0]) if target else None
@@ -384,6 +410,23 @@ def check_summary_length(pages_by_id: dict[str, Page]) -> list[Issue]:
     return issues
 
 
+def check_source_dir_validity(pages_by_id: dict[str, Page]) -> list[Issue]:
+    """error: a page's `source_dir` is absolute, contains a `.`/`..`
+    segment, or doesn't start with `sources/`. Mirrors `validateSourceDir`
+    in `content-index.ts`. Pages with a valid or absent `source_dir` are
+    not reported.
+    """
+    issues: list[Issue] = []
+    for page in pages_by_id.values():
+        source_dir = page.fm.get("source_dir")
+        if not isinstance(source_dir, str):
+            continue
+        error = validate_source_dir(source_dir)
+        if error is not None:
+            issues.append(("error", page.relpath, f"invalid source_dir: {error}"))
+    return issues
+
+
 def load_source_anchor_keys(root: Path, source_dir: str) -> set[str] | None:
     """The set of valid citation keys for a `source_dir`: `anchors.md`
     keys for a paper/blog, `transcript.md` timestamp keys for a
@@ -462,6 +505,8 @@ def check_cache_fulltext(root: Path, pages_by_id: dict[str, Page], ci: bool) -> 
         source_dir = page.fm.get("source_dir")
         if not isinstance(source_dir, str) or source_dir in checked_source_dirs:
             continue
+        if validate_source_dir(source_dir) is not None:
+            continue  # reported by check_source_dir_validity; don't also build a path from it
         checked_source_dirs.add(source_dir)
 
         anchors_path = root / source_dir / "anchors.md"
@@ -489,7 +534,8 @@ def git_toplevel(root: Path) -> str | None:
         result = subprocess.run(
             ["git", "-C", str(root), "rev-parse", "--show-toplevel"],
             capture_output=True,
-            text=True,
+            encoding="utf-8",
+            errors="replace",
             check=False,
         )
     except FileNotFoundError:
@@ -506,7 +552,8 @@ def git_tracked_files(repo_root: str, subpath: str) -> list[str]:
     result = subprocess.run(
         ["git", "-C", repo_root, "ls-tree", "-r", "--name-only", "HEAD", "--", subpath],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if result.returncode != 0:
@@ -521,7 +568,8 @@ def git_show_head(repo_root: str, relpath: str) -> str | None:
     result = subprocess.run(
         ["git", "-C", repo_root, "show", f"HEAD:{relpath}"],
         capture_output=True,
-        text=True,
+        encoding="utf-8",
+        errors="replace",
         check=False,
     )
     if result.returncode != 0:
@@ -774,7 +822,7 @@ def check_missing_source_dirs(root: Path, pages_by_id: dict[str, Page]) -> list[
     referenced: set[str] = set()
     for page in pages_by_id.values():
         source_dir = page.fm.get("source_dir")
-        if isinstance(source_dir, str):
+        if isinstance(source_dir, str) and validate_source_dir(source_dir) is None:
             referenced.add(source_dir.rstrip("/"))
 
     issues: list[Issue] = []
@@ -904,6 +952,7 @@ def lint(root: Path, ci: bool = False, today: date | None = None) -> list[Issue]
         issues.append(("error", relpath, msg))
 
     issues += check_relation_targets(pages_by_id, redirects)
+    issues += check_source_dir_validity(pages_by_id)
     issues += check_anchors_exist(root, pages_by_id, redirects)
     issues += check_cache_fulltext(root, pages_by_id, ci)
     issues += check_append_only(root)

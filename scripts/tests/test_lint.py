@@ -128,6 +128,25 @@ def add_alias(repo: Path, relpath: str, alias: str) -> None:
     _write_frontmatter(path, fm, body)
 
 
+def set_source_dir(repo: Path, relpath: str, source_dir: str) -> None:
+    path = repo / relpath
+    fm, body, _ = _read_frontmatter(path)
+    fm["source_dir"] = source_dir
+    _write_frontmatter(path, fm, body)
+
+
+def insert_heading_before(repo: Path, relpath: str, marker: str, heading_line: str) -> None:
+    """Insert `heading_line` (e.g. `### 来源：...`) immediately before the
+    first occurrence of `marker` in the page body, so it becomes an
+    earlier block processed by `citations_with_sources`.
+    """
+    path = repo / relpath
+    text = path.read_text(encoding="utf-8")
+    idx = text.index(marker)
+    new_text = text[:idx] + heading_line + "\n\n" + text[idx:]
+    path.write_text(new_text, encoding="utf-8")
+
+
 def test_mini_repo_has_only_the_known_bad_anchor(repo):
     errs = [i for i in lint(repo, ci=True) if i[0] == "error"]
     assert [(p, "anchor" in m) for _, p, m in errs] == [
@@ -217,3 +236,101 @@ def test_not_a_git_repo_skips_append_only_check(repo):
     edit_line(repo, "sources/papers/2611.00001/anchors.md", 0, "## §3.2 Changed")
     issues = lint(repo, ci=True)
     assert not has_error(issues, "anchors.md")
+
+
+# --- Fix round 1 -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad_source_dir",
+    ["/etc/passwd", "../../etc", "wiki/x"],
+)
+def test_invalid_source_dir_is_an_error(repo, bad_source_dir):
+    set_source_dir(repo, "wiki/papers/202611-sample-paper.md", bad_source_dir)
+    errs = [i for i in lint(repo, ci=True) if i[0] == "error"]
+    matches = [e for e in errs if "source_dir" in e[2] and bad_source_dir in e[2]]
+    assert len(matches) == 1, f"expected exactly one source_dir error for {bad_source_dir!r}, got {errs}"
+
+
+def test_valid_source_dir_is_not_flagged(repo):
+    set_source_dir(repo, "wiki/papers/202611-sample-paper.md", "sources/papers/2611.00001")
+    errs = [i for i in lint(repo, ci=True) if i[0] == "error"]
+    assert not any("source_dir" in e[2] for e in errs)
+
+
+def test_invalid_source_dir_does_not_duplicate_or_mislead_other_checks(repo):
+    # an invalid source_dir must not also trigger a second, misleading
+    # error from a source_dir-based check (e.g. treating it as a missing
+    # anchor table) — only the dedicated validity check should fire for it.
+    set_source_dir(repo, "wiki/papers/202611-sample-paper.md", "/etc/passwd")
+    errs = [i for i in lint(repo, ci=True) if i[0] == "error"]
+    source_dir_errs = [e for e in errs if "source_dir" in e[2]]
+    other_errs_on_same_page = [
+        e for e in errs if e[1] == "wiki/papers/202611-sample-paper.md" and "source_dir" not in e[2]
+    ]
+    assert len(source_dir_errs) == 1
+    assert other_errs_on_same_page == []
+
+
+def test_mini_repo_still_exactly_one_error_after_source_dir_check_added(repo):
+    errs = [i for i in lint(repo, ci=True) if i[0] == "error"]
+    assert [(p, "anchor" in m) for _, p, m in errs] == [
+        ("wiki/videos/20261101-demo-explainer.md", True)
+    ]
+
+
+def test_broken_repo_still_exactly_three_errors_after_source_dir_check_added(tmp_path):
+    dest = tmp_path / "broken"
+    shutil.copytree(BROKEN, dest)
+    errs = [i for i in lint(dest, ci=True) if i[0] == "error"]
+    assert len(errs) == 3
+
+
+def test_heading_starting_with_source_marker_does_not_switch_source(repo):
+    # TS remark-wiki.ts only switches the "current source" on a paragraph
+    # node (`node.type === 'paragraph'`); an ATX heading that happens to
+    # start with 来源： must not trigger the switch.
+    insert_heading_before(
+        repo,
+        "wiki/concepts/context-compaction.md",
+        "## 开放问题",
+        "### 来源：[v](../videos/20261101-demo-explainer.md)",
+    )
+    append(repo, "wiki/concepts/context-compaction.md", "观点（[00:01:02]）")
+    # the citation above has no resolvable source (concept page has no
+    # source_dir, and the heading never switched `current`), so it must
+    # not be checked against the video's transcript anchors at all —
+    # i.e. it must not appear as an anchor-not-found error.
+    issues = lint(repo, ci=True)
+    assert not has_error(issues, "00:01:02")
+
+
+def test_git_subprocess_helpers_handle_chinese_text(tmp_path):
+    """git_toplevel/git_tracked_files/git_show_head must decode subprocess
+    output as UTF-8 regardless of locale (`encoding='utf-8'`, not bare
+    `text=True`), so a tracked file containing Chinese text round-trips.
+    """
+    from lint import git_show_head, git_toplevel, git_tracked_files
+
+    repo_dir = tmp_path / "chinese_repo"
+    repo_dir.mkdir()
+    sources = repo_dir / "sources" / "papers" / "x"
+    sources.mkdir(parents=True)
+    content = "## §1 测试章节标题\n\n- §1: \"这是一句包含中文的引用短句\"\n"
+    (sources / "anchors.md").write_text(content, encoding="utf-8")
+
+    run = lambda *args: subprocess.run(args, cwd=repo_dir, check=True, capture_output=True)
+    run("git", "init", "-q")
+    run("git", "config", "user.email", "test@example.com")
+    run("git", "config", "user.name", "Test")
+    run("git", "add", "-A")
+    run("git", "commit", "-q", "-m", "中文提交说明")
+
+    top = git_toplevel(repo_dir)
+    assert top is not None
+
+    tracked = git_tracked_files(top, "sources")
+    assert "sources/papers/x/anchors.md" in tracked
+
+    shown = git_show_head(top, "sources/papers/x/anchors.md")
+    assert shown == content
