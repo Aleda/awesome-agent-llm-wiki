@@ -58,3 +58,4 @@
 - §5.1¶3: "We further surmise that it is considerably more data-efficient to train semantic state-space models due to the lack of need to teach the model to pay attention to the suitable patches of earlier context. Ultimately, we see no reason why SSSMs could not match the performance of full-history-accumulating models"
 - §6¶2: "we conclude that long contexts are not necessary for the completion of “long-context” tasks."
 - §6¶3: "Our evidence does not rule out the existence of tasks for which long context is beneficial, nor does it prove that every possible task can be solved with short context."
+- §6¶3: "We believe that with the appropriate adjustments made to the post-training of LMs, the context window size requirements currently imposed on these models by the standard arguments for long contexts could be removed, and model context window sizes could shrink drastically"

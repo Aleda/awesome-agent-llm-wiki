@@ -18,6 +18,11 @@ by:
   - { name: Yonggan Fu, role: author }
   - { name: Wonmin Byeon, role: author }
   - { name: Hanrong Ye, role: author }
+  - { name: Ryan Angilly, role: author }
+  - { name: Ali Taghibakhshi, role: author }
+  - { name: Shih-Yang Liu, role: author }
+  - { name: Siru Ouyang, role: author }
+  - { name: Greg Heinrich, role: author }
   - { name: Pavlo Molchanov, role: author }
 relations:
   - { concept: frequent-context-compaction, rel: proposes, note: 把压缩阈值压到 16K–48K、极端时每个动作后压缩一次，配合按需读取长输入，长程和长输入任务的准确率基本保持 }
@@ -26,18 +31,18 @@ relations:
 
 ## 新认知
 
-- **长上下文的代价主要落在服务端：同一模型把 context window 从 256K 配到 16K，H100 上的解码吞吐高 3.6–7 倍（Fig. 4），而零售价按每百万 token 固定计价，用户看不到这部分差价（§1¶1）**；作者据此认为窗口应当按任务实际需要收缩（§6¶3），这是[频繁上下文压缩](../concepts/frequent-context-compaction.md)的经济前提。
+- **长上下文的代价主要落在服务端：三个开源模型把 context window 从 256K 配到 16K，H100 上的解码吞吐分别高 3.6、5.6、7 倍（Fig. 4），而零售价按每百万 token 固定计价，用户看不到这部分差价（§1¶1）**；作者据此认为窗口应当按任务实际需要收缩（§6¶3），这是[频繁上下文压缩](../concepts/frequent-context-compaction.md)的经济前提。
 - **作者认为长程任务不需要长上下文：压缩阈值一路收紧到 16K/12K，Claude Opus 4.5 和 GPT 5.6 Sol 在 22 个配置里各自最多 5 个掉点超过 2 个点（§3¶4）**，完整历史一直留在上下文里的必要性比通常设想的低，见[频繁上下文压缩](../concepts/frequent-context-compaction.md)。
 - 长输入任务可以化成长程任务：把输入存成环境里的文件，让 agent 用 grep 和有界读取按需取证据（§1¶8）；作者报告这样做在 7 个长输入 benchmark 上几乎全部持平或更好，并据此认为输入规模本身不构成需要长上下文的理由（§4¶7），见[频繁上下文压缩](../concepts/frequent-context-compaction.md#设计空间)。
-- 压缩有损，作者也承认（§3.1¶2），实验里看得到：多跳检索的 [FRAMES](../glossary.md#frames) 上两个模型在每个压缩配置下都低于完整历史（Tab. 6）。作者给的补救是把完整历史存档并配一个选择性读取工具，把"需要历史"转成长输入问题（§3.1¶4），这让[频繁上下文压缩](../concepts/frequent-context-compaction.md#共识与分歧)和检索式上下文成了一条组合路线。
-- 压缩频率可以推到每个动作一次：单动作压缩（SAC）下中位峰值上下文只有 7–9K token（§5¶2），准确率没有崩溃（§5¶3）；但四组对比里 SAC 都低于最佳 EoCC 配置（Tab. 2），所以[频繁上下文压缩](../concepts/frequent-context-compaction.md#设计空间)存在一个最优频率，压到每个动作一次已经越过了它。
-- 作者由 SAC 引出[语义状态空间模型](../concepts/semantic-state-space-model.md)：后训练一个模型，每轮读入一段自然语言描述的对话状态、行动、再改写这段状态（§5.1¶2），并推测这比训练完整历史模型更省数据（§5.1¶3）；这一部分是设想，论文没有训练实验。
-- **本库判断：长程任务上的省钱倍数取决于作者假设的定价模型。按现行标价，GPT 5.6 Sol 在 [SWE-bench](../glossary.md#swe-bench) Verified 上压缩后反而更贵（$167.68 升到 $184.16–$203.12），因为每次压缩都开新对话，缓存命中的输入从 100.2M 降到 45.8M–94.2M token（Tab. 3）**；要兑现节省，服务方得按窗口大小部署和定价，见[频繁上下文压缩](../concepts/frequent-context-compaction.md#开放问题)。
+- 压缩有损，作者也承认（§3.1¶2），多跳检索的 [FRAMES](../glossary.md#frames) 上两个模型在每个压缩配置下都低于完整历史（Tab. 6）；作者的补救是把完整历史存档并配一个选择性读取工具，把"需要历史"转成长输入问题（§3.1¶4），于是[频繁上下文压缩](../concepts/frequent-context-compaction.md#共识与分歧)和检索式上下文成了一条组合路线。
+- 压缩频率可以推到每个动作一次：单动作压缩（SAC）下中位峰值上下文只有 7–9K token（§5¶2），作者认为准确率没有崩溃（§5¶3）；Opus 4.5 在两个 benchmark 上持平或高于完整历史，GPT 5.6 Sol 低 2.0 和 3.3 个点（§5¶2），且低于它的全部四档 EoCC（Tab. 3、Tab. 5），所以把频率推到极限的代价因模型而异，见[频繁上下文压缩](../concepts/frequent-context-compaction.md#设计空间)。
+- 作者由 SAC 引出[语义状态空间模型](../concepts/semantic-state-space-model.md)：后训练一个模型，每轮读入一段自然语言描述的对话状态、行动、再改写这段状态（§5.1¶2），并推测这比训练完整历史模型更省数据（§5.1¶3），但论文没有训练实验。
+- **本库判断：长程任务上的省钱倍数取决于作者假设的定价模型，按现行标价，GPT 5.6 Sol 在 [SWE-bench](../glossary.md#swe-bench) Verified 上压缩后反而更贵（$167.68 升到 $184.16–$203.12），因为每次重开对话都会让此前的缓存作废，缓存命中的输入从 100.2M 降到 45.8M–94.2M token（Tab. 3）**；要兑现节省，服务方得按窗口大小部署和定价，见[频繁上下文压缩](../concepts/frequent-context-compaction.md#开放问题)。
 - 压缩的鲁棒性依赖模型：开源的 Qwen 3 Coder Next 在 16K/12K 下 SWE-bench Verified 从 53.0% 掉到 3.6%（Tab. 9），和 CLM 论文里小模型训练前管不好上下文的观察方向一致（[CLM](./202609-context-language-models.md) §5.2¶4），见[频繁上下文压缩](../concepts/frequent-context-compaction.md#开放问题)。
 
 ## 核心问题
 
-主流模型的 context window 已到 200K 至 1M 以上（Tab. 1），agent 默认把全部交互历史和全部长输入放进上下文；而生成代价随上下文深度增长，同一模型在 256K 窗口下每个生成 token 比 16K 贵 3.6–7 倍（Fig. 1）。作者认为模型一直在追着输入变长，没有朝效率优化（§1¶5）。本质问题是：长程任务和长输入任务需要的究竟是"大量 token 同时在场"，还是每一步只需要一份有界的信息；如果是后者，长上下文就只是一个昂贵的工程默认值，可以用压缩和按需读取替换（§6¶2）。
+主流模型的 context window 已到 200K 至 1M 以上（Tab. 1），agent 默认把全部交互历史和全部长输入放进上下文；而生成代价随上下文深度增长，作者测的三个开源模型在 256K 窗口下每个生成 token 比 16K 贵 3.6–7 倍（Fig. 1）。作者认为模型一直在追着输入变长，没有朝效率优化（§1¶5）。本质问题是：长程任务和长输入任务需要的究竟是"大量 token 同时在场"，还是每一步只需要一份有界的信息；如果是后者，长上下文就只是一个昂贵的工程默认值，可以用压缩和按需读取替换（§6¶2）。
 
 ## 核心洞察
 
@@ -75,16 +80,16 @@ relations:
 
 - 压缩是有损的，可以构造必然失败的任务，例如要求回看第 i 次掷硬币结果（§3.1¶2）；作者的补救是历史存档加选择性读取（§3.1¶4），但没有实验验证这一补救。
 - 证据不排除存在受益于长上下文的任务，也不证明所有任务都能用短上下文完成（§6¶3）。
-- 开源模型对压缩的鲁棒性差别很大，Qwen 3 Coder Next 在最紧的设置下几乎全部失败，作者归因于它的轨迹太冗长，两次压缩之间留不出有效工作的空间（Tab. 9）。
-- [NIAH](../glossary.md#niah) 上的满分，作者归因于针和问题之间有直接的词面重合，便于检索（Tab. 14）。
+- 开源模型对压缩的鲁棒性差别很大，Qwen 3 Coder Next 在 16K/12K 下的 SWE-bench Verified 几乎全部失败（Tab. 9）；作者在论文附录 D 把原因归于它的轨迹太冗长，两次压缩之间留不出有效工作的空间。
+- [NIAH](../glossary.md#niah) 上两个模型都拿到满分（Tab. 14），作者在论文附录 F 把它归因于针和问题之间有直接的词面重合，便于检索。
 - SSSM 只是设想，"更省数据"是推测（§5.1¶3）。
 
 ### 本库判断的
 
-- 长程任务的省钱倍数是模型估算。估计优化零售成本假设价格随部署的窗口大小从标价线性降到 16K 时的约 20%（推导在论文附录 B）。按现行标价算，压缩常常更贵：除 SWE-bench Verified 上的 GPT 5.6 Sol（Tab. 3），Terminal-Bench 2.1 上 Opus 4.5 的四个压缩配置也都高于基线的 $87.80（Tab. 5）。原因是每次压缩都重开对话，缓存命中的输入减少；GPT 5.6 Sol 的输出 token 也从 3.1M 增到 3.9M–5.3M（Tab. 3）。
-- 吞吐收益来自部署时配置的窗口大小，测量时请求长度在窗口内均匀抽样（§2.5、Fig. 4）。单个 agent 在 256K 端点上自己压缩，服务方的成本不会因此下降，需要专门的短窗口部署。作者讨论过总 token 增加可能抵消节省（§3¶5），没有讨论部署这一层。
+- 长程任务的省钱倍数是模型估算。估计优化零售成本假设价格随部署的窗口大小从标价线性降到 16K 时的约 20%（推导在论文附录 B）。按标价，GPT 5.6 Sol 在 22 个长程配置里有 21 个比基线贵，Opus 4.5 有 7 个（Tab. 3、Tab. 4、Tab. 5、Tab. 6、Tab. 7、Tab. 8）。原因是每次压缩都重开对话，重开处之前的缓存作废，缓存命中的输入减少；GPT 5.6 Sol 在 SWE-bench Verified 上的输出 token 也从 3.1M 增到 3.9M–5.3M（Tab. 3）。
+- 吞吐收益来自部署时配置的窗口大小，测量时请求长度在窗口内均匀抽样（§2.5、Fig. 4）。单个 agent 在 256K 端点上自己压缩，服务方的成本不会因此下降，需要专门的短窗口部署。作者把节省归于只服务更短的窗口（§4¶4），也设想云上窗口可以大幅缩小（§6¶3），但没有讨论服务方是否会、怎样按窗口分档部署和定价。
 - 长输入上的大幅提升主要来自选择性读取：RULER 和 BABILong 上压缩次数的中位数是零（Tab. 15、Tab. 17）。原文只说基线收到 benchmark 规定的全部输入（§4）；NIAH 的输入长到约 500K token，超出 Opus 4.5 的 200K 窗口（§2.2、Tab. 1），基线怎样处理超长输入没有交代，部分提升可能反映的是基线的失败方式。
-- "每个动作后都能压缩"成立的是"不崩溃"：SAC 在四组对比里都低于最佳 EoCC，GPT 5.6 Sol 在 SWE-bench Verified 上差 6.4 个点（Tab. 2）。SSSM 能追平完整历史模型（§5.1¶3）目前没有证据。
+- "每个动作后都能压缩"对 Opus 4.5 成立，对 GPT 5.6 Sol 有损：后者低于完整历史 2.0–3.3 个点，比最佳 EoCC 低 6.4 个点（Tab. 2）。"最佳 EoCC"是四档里挑出的最好一档，拿它和单次 SAC 运行比会放大差距；逐档看，Opus 4.5 的 SAC 高于 SWE-bench Verified 上 16K/12K 的 EoCC（Tab. 3），也高于 Terminal-Bench 上四档中的三档（Tab. 5）。SSSM 能追平完整历史模型（§5.1¶3）目前没有证据。
 - 主实验只有两个闭源模型，harness 是每轮一个 Bash 动作的极简 ReAct 循环（§2.4）。带并行工具调用、子 agent 或人类反馈的工作流没有测。
 - 原文没有单独的机构署名，本库依据论文链接的 NVIDIA Research 实验室页面和 NVIDIA 硬件把机构记为 NVIDIA。arXiv comment 字段写作 Technical report，31 页。
 
@@ -94,4 +99,4 @@ relations:
 - 成本口径：CLM 用 prefix-reuse FLOPs 把中段编辑后的重预填算进成本（[CLM](./202609-context-language-models.md) §4.1¶5）；本文按新输入、缓存输入、输出分别计价，压缩后缓存命中下降（Tab. 3）。两篇都说明"上下文变短"不等于"更省"，要看推理服务怎样复用缓存，见[后缀缓存复用](../concepts/suffix-cache-reuse.md)。
 - SSSM 与 CLM 的"把 harness 操作蒸馏进权重"（[CLM](./202609-context-language-models.md) §6¶2）方向相同，都想让上下文管理成为模型后训练得到的能力；SSSM 把状态限定为每个动作后重写的一段自然语言（§5.1¶2）。
 - 与 State-Space Model（Mamba 一类）：SSSM 的名字借自 SSM，区别是状态是可读的自然语言，在对话轮次之间传递，SSM 的状态是 token 之间的神经网络隐状态（§5.1¶2）。
-- 与 NIAH 一类长上下文 benchmark：作者认为这类 benchmark 预设了"长上下文任务"的存在，而他们没有找到必须用长上下文才能完成的任务（Tab. 14）。
+- 与 NIAH 一类长上下文 benchmark：作者在论文附录 F 讨论 NIAH 结果（Tab. 14）时认为，这类 benchmark 预设了"长上下文任务"的存在，而他们没有找到必须用长上下文才能完成的任务。
