@@ -1,0 +1,38 @@
+---
+/**
+ * Homepage = the knowledge graph (Task 12, spec §8). Not a Starlight page:
+ * a full-screen canvas with its own top bar. This static route wins `/`
+ * over Starlight's `[...slug]` route; the wiki has no root `index` entry
+ * (its index page is `wiki/index`, served at `/wiki/`).
+ *
+ * The inline head script applies the stored Starlight theme choice
+ * (`starlight-theme`: 'light' | 'dark' | auto) before first paint, so the
+ * graph and the content pages share one setting.
+ */
+import '../styles/tokens.css';
+import GraphApp from '../components/GraphApp.astro';
+---
+
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>Agent LLM Wiki · 知识图谱</title>
+    <meta name="description" content="Agent 研究的知识图谱：主题、概念与论文、Blog、视频、播客之间的关系。" />
+    <meta name="color-scheme" content="light dark" />
+    <script is:inline>
+      (function () {
+        var s = null;
+        try {
+          s = localStorage.getItem('starlight-theme');
+        } catch (e) {}
+        var dark = s === 'dark' || (s !== 'light' && window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      })();
+    </script>
+  </head>
+  <body>
+    <GraphApp />
+  </body>
+</html>
