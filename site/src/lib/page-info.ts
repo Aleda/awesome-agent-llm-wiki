@@ -11,7 +11,7 @@
  */
 import { REL_LABEL, TYPE_LABEL } from './labels';
 import type { Edge, GeneratedIndex, PageId, PageInfo } from './content-index';
-import { toRoute } from './routes';
+import { BASE, toRoute } from './routes';
 
 export interface CardItem {
   text: string;
@@ -42,7 +42,7 @@ const REL_PRIORITY: string[] = [
 ];
 
 function cardItemHref(id: PageId): { href: string; preview: string } {
-  return { href: toRoute(id), preview: `/awesome-agent-llm-wiki/data/previews/${id}.json` };
+  return { href: toRoute(id), preview: `${BASE}/data/previews/${id}.json` };
 }
 
 /** A page's title, or the raw id's final segment if it isn't in `idx.pages` (e.g. a dangling link — shouldn't happen post-build, but keeps this defensive). */
@@ -162,15 +162,15 @@ function conceptSourceEdges(backlinks: Edge[]): Edge[] {
 }
 
 /**
- * `2（提出 1 · 反驳 1）` / `0` 来源数 text: the leading number and each
- * per-relation count are both counts of *edges* (one source page citing a
- * concept twice, e.g. once to `propose` it and once more to `challenge`
- * it, counts as 2) — the mini-repo fixture's single paper with both a
- * `proposes` and a `challenges` edge into 上下文压缩 is exactly this case
- * and is pinned at `2（提出 1 · 反驳 1）`, not `1`.
+ * `2（提出 1 · 反驳 1）` / `0` 来源数 text (ruling R5 — spec §7.1): the
+ * leading number counts *distinct source pages* pointing at the concept;
+ * the per-relation breakdown stays edge-based (one page citing a concept
+ * under two relations contributes 1 to both relation counts, but only 1
+ * to the distinct-page total).
  */
 function sourceCountText(edges: Edge[]): string {
-  if (edges.length === 0) return '0';
+  const distinctSources = new Set(edges.map((e) => e.from));
+  if (distinctSources.size === 0) return '0';
   const counts = new Map<string, number>();
   const order: string[] = [];
   for (const edge of edges) {
@@ -182,7 +182,7 @@ function sourceCountText(edges: Edge[]): string {
     counts.set(label, counts.get(label)! + 1);
   }
   const breakdown = order.map((label) => `${label} ${counts.get(label)}`).join(' · ');
-  return `${edges.length}（${breakdown}）`;
+  return `${distinctSources.size}（${breakdown}）`;
 }
 
 /** Left card for a concept page: 定义/所属主题/来源数. */
@@ -269,15 +269,15 @@ export function metaCard(id: PageId, idx: GeneratedIndex): CardRow[] {
 
 /**
  * `A、B、C 等 N 人` for >3 authors, else all joined by `、`. Authors are
- * `by` entries with role `author` or `speaker`; when a source credits only
- * an org (no individual author on record — e.g. an institutional report),
- * the org names stand in so the 作者 row still has something to show.
+ * `by` entries with an individual role (`author`/`speaker`); returns
+ * `null` when there is none, so the 作者 row is omitted entirely rather
+ * than falling back to org names (ruling R6 — that would just duplicate
+ * 机构).
  */
 function authorsText(idx: GeneratedIndex, info: PageInfo): string | null {
   const individual = info.by.filter((b) => b.role === 'author' || b.role === 'speaker');
-  const source = individual.length > 0 ? individual : info.by.filter((b) => b.role === 'org');
-  if (source.length === 0) return null;
-  const names = source.map((a) => orgName(idx, a));
+  if (individual.length === 0) return null;
+  const names = individual.map((a) => orgName(idx, a));
   if (names.length > 3) {
     return `${names.slice(0, 3).join('、')} 等 ${names.length} 人`;
   }

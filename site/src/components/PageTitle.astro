@@ -30,6 +30,11 @@ const INDEX_PATH = '.generated/index.json';
 
 let cachedIndex: GeneratedIndex | undefined;
 
+// Cached at module scope, so it's read once per build process: `astro
+// build` runs this module once for every page, and `astro dev`'s process
+// stays alive across requests too — if `.generated/index.json` changes
+// (i.e. `npm run prepare-content` reruns) while `astro dev` is still
+// running, restart it to pick up the new content.
 function loadIndex(): GeneratedIndex | null {
   if (cachedIndex !== undefined) return cachedIndex;
   try {

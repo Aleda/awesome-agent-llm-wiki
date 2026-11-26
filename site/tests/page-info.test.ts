@@ -49,10 +49,14 @@ const PODCAST = 'wiki/podcasts/demo-podcast';
 /** A blog page, for the blog source-card field set. */
 const BLOG = 'wiki/blogs/demo-blog';
 
+/** A concept with two distinct source pages pointing at it, to pin the 来源数 leading number at a distinct-page count (ruling R5), not an edge count. */
+const TWO_SOURCES_CONCEPT = 'wiki/concepts/two-sources';
+
 let idx8: GeneratedIndex;
 let idxA: GeneratedIndex;
 let idxP: GeneratedIndex;
 let idxB: GeneratedIndex;
+let idx2Sources: GeneratedIndex;
 
 beforeAll(async () => {
   tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'page-info-test-'));
@@ -131,7 +135,10 @@ beforeAll(async () => {
         title: 'Many Authors Paper',
         summary: '一篇有很多作者的测试论文。',
         topics: ['context'],
-        by: manyAuthorNames.map((name) => ({ name, role: 'author' as const })),
+        by: [
+          ...manyAuthorNames.map((name) => ({ name, role: 'author' as const })),
+          { name: 'Example Labs', role: 'org' as const },
+        ],
         insights: [],
         date: '2026-11-06',
         venue: 'arXiv',
@@ -193,6 +200,58 @@ beforeAll(async () => {
     backlinks: {},
     redirects: {},
   };
+
+  idx2Sources = {
+    pages: {
+      [TWO_SOURCES_CONCEPT]: {
+        id: TWO_SOURCES_CONCEPT,
+        type: 'concept',
+        title: 'Two Sources Concept',
+        summary: '一个有两篇不同素材指向的测试概念。',
+        topics: ['context'],
+        by: [],
+        insights: [],
+        status: 'established',
+      },
+      'wiki/papers/source-one': {
+        id: 'wiki/papers/source-one',
+        type: 'paper',
+        title: 'Source One',
+        summary: '第一篇测试素材。',
+        topics: ['context'],
+        by: [],
+        insights: [],
+        date: '2026-11-09',
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2611.00097',
+        sourceKey: 'sources/papers/2611.00097',
+      },
+      'wiki/papers/source-two': {
+        id: 'wiki/papers/source-two',
+        type: 'paper',
+        title: 'Source Two',
+        summary: '第二篇测试素材。',
+        topics: ['context'],
+        by: [],
+        insights: [],
+        date: '2026-11-10',
+        venue: 'arXiv',
+        url: 'https://arxiv.org/abs/2611.00096',
+        sourceKey: 'sources/papers/2611.00096',
+      },
+    },
+    edges: [
+      { from: 'wiki/papers/source-one', to: TWO_SOURCES_CONCEPT, rel: 'proposes' },
+      { from: 'wiki/papers/source-two', to: TWO_SOURCES_CONCEPT, rel: 'supports' },
+    ],
+    backlinks: {
+      [TWO_SOURCES_CONCEPT]: [
+        { from: 'wiki/papers/source-one', to: TWO_SOURCES_CONCEPT, rel: 'proposes' },
+        { from: 'wiki/papers/source-two', to: TWO_SOURCES_CONCEPT, rel: 'supports' },
+      ],
+    },
+    redirects: {},
+  };
 });
 
 afterAll(async () => {
@@ -220,10 +279,17 @@ describe('metaCard', () => {
     expect(r.overflow).toHaveLength(2);
   });
 
-  test('concept card counts relations', () => {
+  test('concept card counts relations (distinct source pages, ruling R5)', () => {
     const rows = metaCard('wiki/concepts/context-compaction', idx);
     expect(labels(rows)).toEqual(['定义', '所属主题', '来源数']);
-    expect(rows[2].items[0].text).toBe('2（提出 1 · 反驳 1）');
+    // The mini-repo's single paper has both a proposes and a challenges
+    // edge into this concept: one distinct source page, two relations.
+    expect(rows[2].items[0].text).toBe('1（提出 1 · 反驳 1）');
+  });
+
+  test('concept card counts distinct source pages, not edges', () => {
+    const rows = metaCard('wiki/concepts/two-sources', idx2Sources);
+    expect(rows[2].items[0].text).toBe('2（提出 1 · 支持 1）');
   });
 
   test('isolated concept shows zero', () => {
@@ -249,11 +315,20 @@ describe('metaCard', () => {
 });
 
 describe('sourceCard', () => {
-  test('paper source card', () => {
-    expect(labels(sourceCard(PAPER, idx))).toEqual(['作者', '机构', '发表', '链接', '总结']);
+  test('paper source card omits 作者 when by has no individual entries (ruling R6)', () => {
+    // The mini-repo paper's `by` has only a `role: org` entry (demo-org),
+    // no individual author — 作者 must be omitted, not fall back to org names.
+    expect(labels(sourceCard(PAPER, idx))).toEqual(['机构', '发表', '链接', '总结']);
   });
 
-  test('many authors collapse', () => {
+  test('many authors collapse, full row set with an individual author present', () => {
+    expect(labels(sourceCard(MANY_AUTHORS, idxA))).toEqual([
+      '作者',
+      '机构',
+      '发表',
+      '链接',
+      '总结',
+    ]);
     expect(sourceCard(MANY_AUTHORS, idxA)[0].items[0].text).toBe(
       'Peter Belcak、Saurav Muralidharan、Jindong Jiang 等 12 人',
     );
