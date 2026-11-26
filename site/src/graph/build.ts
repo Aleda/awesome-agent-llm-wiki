@@ -224,18 +224,21 @@ function ringAngle(index: number, count: number): number {
 }
 
 /**
- * `prev[id]` if both coordinates are finite numbers, else `undefined` — a
- * corrupt/out-of-range on-disk value is treated the same as a missing
- * entry (see module doc).
+ * `prev[id]` if it's actually a 2-element array of finite numbers, else
+ * `undefined` — a corrupt/malformed on-disk value (wrong shape, a
+ * non-array, `null`, extra/missing elements, or a non-finite coordinate)
+ * is treated the same as a missing entry (see module doc). `prev` comes
+ * from parsed JSON (or a test), so its runtime shape for a given id isn't
+ * guaranteed to match the declared `[number, number]` type.
  */
 function finitePrevPos(
   prev: Record<PageId, [number, number]>,
   id: PageId,
 ): [number, number] | undefined {
-  const pos = prev[id];
-  if (pos === undefined) return undefined;
+  const pos: unknown = prev[id];
+  if (!Array.isArray(pos) || pos.length !== 2) return undefined;
   const [x, y] = pos;
-  return Number.isFinite(x) && Number.isFinite(y) ? pos : undefined;
+  return Number.isFinite(x) && Number.isFinite(y) ? (pos as [number, number]) : undefined;
 }
 
 /**

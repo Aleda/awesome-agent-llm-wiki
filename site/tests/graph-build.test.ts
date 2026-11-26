@@ -133,6 +133,38 @@ describe('buildGraph on mini-repo', () => {
     }
   });
 
+  test('a malformed (non-array-of-2-finite-numbers) prev entry is ignored, not thrown on', () => {
+    // Each id gets a differently-malformed value: an object instead of a
+    // tuple, a string, a bare number, null, a 3-element array, and a
+    // 1-element array. None of these should throw, and each affected
+    // node should fall back to the same coordinates buildGraph computes
+    // with no prev entry at all for that id.
+    const badPrev = {
+      'wiki/concepts/context-compaction': { x: 1, y: 2 },
+      'wiki/concepts/isolated-idea': '1,2',
+      'wiki/papers/202611-sample-paper': 5,
+      'wiki/videos/20261101-demo-explainer': null,
+      'wiki/entities/demo-org': [1, 2, 3],
+      'wiki/topics/context': [1],
+    } as unknown as Record<string, [number, number]>;
+
+    let g2: ReturnType<typeof buildGraph> | undefined;
+    expect(() => {
+      g2 = buildGraph(idx, badPrev);
+    }).not.toThrow();
+
+    for (const n of g2!.nodes) {
+      expect(Number.isFinite(n.x)).toBe(true);
+      expect(Number.isFinite(n.y)).toBe(true);
+    }
+
+    for (const id of Object.keys(badPrev)) {
+      const withBadPrev = g2!.nodes.find((n) => n.id === id)!;
+      const withNoPrev = at(id);
+      expect([withBadPrev.x, withBadPrev.y]).toEqual([withNoPrev.x, withNoPrev.y]);
+    }
+  });
+
   test('root node has no type/topics mismatch and radius 60', () => {
     expect(at('wiki/topics/agent').r).toBe(60);
   });
