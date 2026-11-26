@@ -173,3 +173,22 @@ export function relatedSources(id: PageId, data: GraphData, limit = 3): GNode[] 
     .sort((p, q) => (q.d ?? '').localeCompare(p.d ?? '') || p.id.localeCompare(q.id))
     .slice(0, limit);
 }
+
+/**
+ * Nodes the camera frames together with `n` when flying to it at `level`
+ * (`frameCluster` in camera.ts): a topic at L1 brings its concepts, a
+ * concept at L2 its neighbouring sources (entities never). Anything else
+ * frames `n` alone (`[]`). Hidden nodes (`visible`, when given) are left out.
+ */
+export function frameMembers(n: GNode, level: 0 | 1 | 2, data: GraphData, visible?: ReadonlySet<PageId>): GNode[] {
+  const want = n.t === 'topic' && !isRootNode(n) && level === 1 ? 'concept' : n.t === 'concept' && level === 2 ? 'source' : null;
+  if (want === null) return [];
+  const byId = new Map(data.nodes.map((m) => [m.id, m]));
+  const out: GNode[] = [];
+  for (const id of neighbors(n.id, data)) {
+    const m = byId.get(id);
+    if (!m || (visible && !visible.has(id))) continue;
+    if (want === 'concept' ? m.t === 'concept' : isSource(m)) out.push(m);
+  }
+  return out;
+}

@@ -13,7 +13,7 @@ import type { PageId } from '../src/lib/content-index';
 import { buildQuadtree } from '../src/graph/render';
 import { CARD_H, CARD_W, LEVEL_SCALE, MIN_SCREEN_R } from '../src/graph/lod';
 import { initialCamera, worldToScreen, K_MIN } from '../src/graph/camera';
-import { clickAction, hitTest, neighbors, relatedSources } from '../src/graph/interaction';
+import { clickAction, frameMembers, hitTest, neighbors, relatedSources } from '../src/graph/interaction';
 import { decodeView, encodeView } from '../src/graph/hash';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -170,6 +170,31 @@ describe('relatedSources', () => {
       al: {},
     };
     expect(relatedSources('wiki/concepts/c', data).map((n) => n.id)).toEqual(['wiki/blogs/b', 'wiki/videos/v', 'wiki/papers/a']);
+  });
+});
+
+describe('frameMembers (camera framing cluster)', () => {
+  const idsOf = (ns: GNode[]) => ns.map((n) => n.id).sort();
+  test('topic at L1: its concepts', () => {
+    expect(idsOf(frameMembers(node('wiki/topics/context'), 1, g))).toEqual([
+      'wiki/concepts/context-compaction',
+      'wiki/concepts/isolated-idea',
+    ]);
+  });
+  test('concept at L2: its neighbouring sources', () => {
+    expect(idsOf(frameMembers(node('wiki/concepts/context-compaction'), 2, g))).toEqual([
+      'wiki/papers/202611-sample-paper',
+    ]);
+  });
+  test('anything else frames the node alone', () => {
+    expect(frameMembers(node('wiki/topics/context'), 2, g)).toEqual([]);
+    expect(frameMembers(node('wiki/topics/agent'), 0, g)).toEqual([]);
+    expect(frameMembers(node('wiki/papers/202611-sample-paper'), 2, g)).toEqual([]);
+  });
+  test('respects the visible set', () => {
+    expect(frameMembers(node('wiki/topics/context'), 1, g, new Set(['wiki/concepts/isolated-idea'])).map((n) => n.id)).toEqual([
+      'wiki/concepts/isolated-idea',
+    ]);
   });
 });
 

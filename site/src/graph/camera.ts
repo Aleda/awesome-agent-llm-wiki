@@ -11,7 +11,7 @@
  * part of the camera — only `fitNode` needs it, to centre a node.
  */
 import type { GNode } from './build';
-import { LEVEL_SCALE } from './lod';
+import { BAND, CARD_H, CARD_W, L1_AT, L2_AT, LEVEL_SCALE } from './lod';
 
 export interface Camera {
   x: number;
@@ -63,6 +63,70 @@ export function flyTo(from: Camera, to: Camera, t: number): Camera {
 export function fitNode(n: GNode, view: { w: number; h: number }, level: 0 | 1 | 2): Camera {
   const k = LEVEL_SCALE[level];
   return { x: n.x - view.w / (2 * k), y: n.y - view.h / (2 * k), k };
+}
+
+/** Zoom range a framed view may use for each level, kept clear of the crossfade bands so `levelOf(k)` is still that level. */
+export const LEVEL_RANGE: Record<0 | 1 | 2, [number, number]> = {
+  0: [K_MIN, L1_AT * (1 - BAND)],
+  1: [L1_AT * (1 + BAND), L2_AT * (1 - BAND)],
+  2: [L2_AT * (1 + BAND), K_MAX],
+};
+
+/**
+ * Screen-px room kept around a framed cluster for what is drawn in screen
+ * space: at L1 a concept label (centred, below the dot) and a topic's
+ * droplet + label; at L2 a source card (`CARD_W` × `CARD_H`, centred on the
+ * node) plus a small gap.
+ */
+const FRAME_PAD: Record<1 | 2, { x: number; top: number; bottom: number }> = {
+  1: { x: 110, top: 40, bottom: 72 },
+  2: { x: CARD_W / 2 + 16, top: CARD_H / 2 + 16, bottom: CARD_H / 2 + 28 },
+};
+
+/**
+ * Camera for flying to `focus` at `level` in a `view.w` × `view.h` area
+ * (same frame as `fitNode`): frames `focus` together with `cluster` (at
+ * L1 a topic's part-of concepts, at L2 a concept's neighbouring sources).
+ * The bounding box of their world positions gets `FRAME_PAD` screen-px
+ * room for labels/cards; `k` is the largest zoom that fits, capped at
+ * `LEVEL_SCALE[level]` and clamped into `LEVEL_RANGE[level]`, so the view
+ * always lands on the requested level. When the clamp means the cluster
+ * cannot fit, the view is centred on the cluster but shifted so `focus`
+ * stays inside the area. L0, or an empty cluster, is `fitNode`.
+ */
+export function frameCluster(
+  focus: Pick<GNode, 'x' | 'y'>,
+  cluster: Pick<GNode, 'x' | 'y'>[],
+  view: { w: number; h: number },
+  level: 0 | 1 | 2,
+): Camera {
+  if (level === 0 || cluster.length === 0) return fitNode(focus as GNode, view, level);
+  const pad = FRAME_PAD[level];
+  let x0 = focus.x;
+  let x1 = focus.x;
+  let y0 = focus.y;
+  let y1 = focus.y;
+  for (const n of cluster) {
+    x0 = Math.min(x0, n.x);
+    x1 = Math.max(x1, n.x);
+    y0 = Math.min(y0, n.y);
+    y1 = Math.max(y1, n.y);
+  }
+  const availW = Math.max(1, view.w - 2 * pad.x);
+  const availH = Math.max(1, view.h - pad.top - pad.bottom);
+  const fit = Math.min(x1 > x0 ? availW / (x1 - x0) : Infinity, y1 > y0 ? availH / (y1 - y0) : Infinity);
+  const [lo, hi] = LEVEL_RANGE[level];
+  const k = Math.min(hi, Math.max(lo, Math.min(fit, LEVEL_SCALE[level])));
+
+  // Centre the padded box: its middle in screen px is at the area's middle.
+  let cx = (x0 + x1) / 2;
+  let cy = (y0 + y1) / 2 + (pad.bottom - pad.top) / (2 * k);
+  // Keep `focus` on screen with its own padding if the box overflows.
+  const halfW = Math.max(0, view.w / 2 - pad.x) / k;
+  const halfH = Math.max(0, view.h / 2 - Math.max(pad.top, pad.bottom)) / k;
+  cx = Math.min(focus.x + halfW, Math.max(focus.x - halfW, cx));
+  cy = Math.min(focus.y + halfH, Math.max(focus.y - halfH, cy));
+  return { x: cx - view.w / (2 * k), y: cy - view.h / (2 * k), k };
 }
 
 /**

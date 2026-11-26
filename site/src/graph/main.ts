@@ -22,10 +22,10 @@ import type { GNode, GraphData } from './build';
 import type { PageId } from '../lib/content-index';
 import { BASE, toRoute } from '../lib/routes';
 import { TYPE_LABEL } from '../lib/labels';
-import { type Camera, fitNode, flyTo, initialCamera, screenToWorld, worldToScreen, zoomAt } from './camera';
+import { type Camera, flyTo, frameCluster, initialCamera, screenToWorld, worldToScreen, zoomAt } from './camera';
 import { LEVEL_SCALE, isRootNode, levelOf } from './lod';
 import { buildQuadtree, createLoop, createRenderer, type Renderer, type ViewState } from './render';
-import { clickAction, hitTest, isSource, neighbors, relatedSources } from './interaction';
+import { clickAction, frameMembers, hitTest, isSource, neighbors, relatedSources } from './interaction';
 import { type GraphView, decodeView, encodeView } from './hash';
 import { searchNodes } from './search';
 import { applyFilters, DEFAULT_FILTERS, normalizeDateRange, SOURCE_TYPES, type Filters, type SourceType } from './filters';
@@ -275,11 +275,15 @@ export async function initGraph(root: HTMLElement): Promise<void> {
 
   const maxTopicR = data.nodes.reduce((m, n) => (n.t === 'topic' && !isRootNode(n) ? Math.max(m, n.r) : m), 0);
   const initialCam = (): Camera => initialCamera({ w: vw, h: vh, top: barH() }, maxTopicR, [centreNode.x, centreNode.y]);
-  /** `fitNode` into the area below the top bar and beside the panel. */
+  /**
+   * Camera for `n` at level `z` in the area below the top bar and beside the
+   * panel: `frameCluster` frames a topic with its concepts (L1) and a concept
+   * with its sources' cards (L2); anything else is `fitNode`.
+   */
   const fitView = (n: GNode, z: Level): Camera => {
     const top = barH();
     const area = panel.freeArea(vw, vh - top);
-    const c = fitNode(n, area, z);
+    const c = frameCluster(n, frameMembers(n, z, data, visible), area, z);
     return { x: c.x, y: c.y - top / c.k, k: c.k };
   };
 
