@@ -482,5 +482,36 @@ describe('renderer', () => {
       document.documentElement.style.removeProperty('--c-ink');
     }
   });
+
+  test('ViewState.rels (Task 13) hides edges whose rel is deselected, but never gates `by` edges', () => {
+    const proposesIdx = REL.indexOf('proposes');
+    const challengesIdx = REL.indexOf('challenges');
+    const concept = g.nodes.find((n) => n.id === 'wiki/concepts/context-compaction')!;
+
+    // Hovering context-compaction normally highlights the paper's "proposes" pill.
+    const allRels = recordingCanvas();
+    const r1 = createRenderer(allRels.canvas, g);
+    r1.resize(800, 600, 1);
+    r1.draw(fitNode(concept, { w: 800, h: 600 }, 1), stateOf({ hover: concept.id, neighbors: new Set(['wiki/topics/context', 'wiki/papers/202611-sample-paper']) }));
+    expect(texts(allRels.calls)).toContain(REL_LABEL.proposes);
+
+    // Deselecting `proposes` (keeping every other rel, including `challenges`) drops that pill.
+    const noProposes = recordingCanvas();
+    const r2 = createRenderer(noProposes.canvas, g);
+    r2.resize(800, 600, 1);
+    const rels = new Set(REL.map((_, i) => i).filter((i) => i !== proposesIdx));
+    expect(rels.has(challengesIdx)).toBe(true);
+    r2.draw(fitNode(concept, { w: 800, h: 600 }, 1), stateOf({ hover: concept.id, neighbors: new Set(['wiki/topics/context', 'wiki/papers/202611-sample-paper']), rels }));
+    expect(texts(noProposes.calls)).not.toContain(REL_LABEL.proposes);
+
+    // `by` edges (entity<->source) still draw with showEntities regardless of `rels`.
+    const entity = g.nodes.find((n) => n.t === 'entity')!;
+    const noRelsAtAll = recordingCanvas();
+    const r3 = createRenderer(noRelsAtAll.canvas, g);
+    r3.resize(800, 600, 1);
+    const entityFill = (calls: Call[]) => calls.some((c) => c.m === 'fill' && styleHas(c.fillStyle, '18,52,86'));
+    r3.draw(fitNode(entity, { w: 800, h: 600 }, 1), stateOf({ showEntities: true, rels: new Set() }));
+    expect(entityFill(noRelsAtAll.calls)).toBe(true);
+  });
 });
 

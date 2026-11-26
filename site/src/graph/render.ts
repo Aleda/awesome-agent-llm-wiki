@@ -40,6 +40,8 @@ export interface ViewState {
   reducedMotion: boolean;
   /** Entity nodes and `by` edges are drawn only when true (default false). */
   showEntities?: boolean;
+  /** `REL` indexes to draw edges for (Task 13 rel filter); absent means every rel is drawn. `by` edges are governed by `showEntities` only, never by this. */
+  rels?: Set<number>;
   /** Neighbours of `hover` (Task 12 `neighbors`); they stay at full opacity while the rest dim to 0.15. */
   neighbors?: Set<PageId>;
   /** True while the camera is panning/zooming/flying (Task 12): droplet glows are skipped to keep frames cheap. */
@@ -524,6 +526,8 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
   let clock = 0;
   let reduced = false;
   let moving = false;
+  /** `ViewState.rels` for the in-progress frame; undefined means every rel draws (Task 13). */
+  let relFilter: Set<number> | undefined;
   let cardShadow: CanvasImageSource | null = null;
   let cardShadowDpr = 0;
   /** Last font assigned to the context; `ctx.font` is only set when it changes (reset when a resize clears the context state). */
@@ -590,11 +594,16 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     geo[5] = by + ((cy - by) / lb) * rad[B];
     return true;
   };
-  /** Shared culling test for an edge: both ends pass the filters and at least one is on screen. */
+  /**
+   * Shared culling test for an edge: both ends pass the filters, its rel is
+   * selected (Task 13; `by` edges are gated by `showEntities` alone via the
+   * GATE_BY bucket, never by `relFilter`), and at least one end is on screen.
+   */
   const edgeLive = (j: number): boolean => {
     const A = ea[j];
     const B = eb[j];
     if (!ok[A] || !ok[B] || (onScreen[A] !== frame && onScreen[B] !== frame)) return false;
+    if (relFilter && er[j] < REL_NAMES.length && !relFilter.has(er[j])) return false;
     place(A);
     place(B);
     return true;
@@ -747,6 +756,7 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     clock = (st.time ?? (typeof performance !== 'undefined' ? performance.now() : Date.now())) / 1000;
     reduced = st.reducedMotion;
     moving = st.moving === true;
+    relFilter = st.rels;
     if (cardShadowDpr !== dpr) {
       cardShadow = cardShadowSprite(theme.cardShadow, dpr);
       cardShadowDpr = dpr;

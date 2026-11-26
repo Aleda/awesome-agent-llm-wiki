@@ -162,3 +162,80 @@ test('panning with nothing focused writes an unfocused (f=0) hash', async ({ pag
   await expect(app(page)).toHaveAttribute('data-ready', '');
   await expect(page.locator('.graph-panel')).toBeHidden();
 });
+
+// --------------------------------------------------------------- Task 13
+
+test('typing a Chinese substring and pressing Enter focuses the matching concept', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  const input = page.locator('#graph-search-input');
+  await input.fill('压缩');
+  await expect(page.locator('#graph-search-listbox li.graph-search__option').first()).toBeVisible();
+  await input.press('Enter');
+  await expect(app(page)).toHaveAttribute('data-focus', 'wiki/concepts/context-compaction');
+  await expect(page.locator('.graph-panel')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('a query with zero node results falls back to a Pagefind full-text box on Enter', async ({ page }) => {
+  const errors = collectErrors(page);
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  const input = page.locator('#graph-search-input');
+  await input.fill('zzzz');
+  await input.press('Enter');
+  await expect(page.locator('#graph-search-fulltext')).toBeVisible();
+  // Allowed to be an empty list, but it must render without throwing.
+  expect(errors).toEqual([]);
+});
+
+test('ArrowDown/ArrowUp move the highlighted option and Escape closes the dropdown', async ({ page }) => {
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  const input = page.locator('#graph-search-input');
+  await input.fill('e');
+  const options = page.locator('#graph-search-listbox li.graph-search__option');
+  await expect(options.first()).toBeVisible();
+  await input.press('ArrowDown');
+  await expect(options.nth(0)).toHaveAttribute('aria-selected', 'true');
+  await input.press('Escape');
+  await expect(page.locator('#graph-search-listbox')).toBeHidden();
+});
+
+test('"/" focuses the search input unless already typing elsewhere', async ({ page }) => {
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  await page.keyboard.press('/');
+  await expect(page.locator('#graph-search-input')).toBeFocused();
+});
+
+test('filter button toggles the popover and hiding papers removes the paper from search', async ({ page }) => {
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  const filterBtn = page.locator('#graph-filter-btn');
+  await expect(filterBtn).toBeVisible();
+  await filterBtn.click();
+  const panel = page.locator('#graph-filter-panel');
+  await expect(panel).toBeVisible();
+  await expect(filterBtn).toHaveAttribute('aria-expanded', 'true');
+
+  await panel.locator('.graph-filter__type[value="paper"]').uncheck();
+  const input = page.locator('#graph-search-input');
+  await input.fill('Sample Paper');
+  await expect(page.locator('#graph-search-listbox li.graph-search__option')).toHaveCount(0);
+
+  await page.keyboard.press('Escape');
+  await expect(panel).toBeHidden();
+});
+
+test('showing entities makes the entity searchable and visible', async ({ page }) => {
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  await page.locator('#graph-filter-btn').click();
+  await page.locator('#graph-filter-entities').check();
+  const input = page.locator('#graph-search-input');
+  await input.fill('Demo Org');
+  await expect(page.locator('#graph-search-listbox li.graph-search__option').first()).toContainText('Demo Org');
+});
+

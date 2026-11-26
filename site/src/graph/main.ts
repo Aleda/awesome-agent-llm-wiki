@@ -27,6 +27,13 @@ import { LEVEL_SCALE, isRootNode, levelOf } from './lod';
 import { buildQuadtree, createLoop, createRenderer, type Renderer, type ViewState } from './render';
 import { clickAction, hitTest, isSource, neighbors, relatedSources } from './interaction';
 import { type GraphView, decodeView, encodeView } from './hash';
+import { searchNodes } from './search';
+import { applyFilters, DEFAULT_FILTERS, SOURCE_TYPES, type Filters, type SourceType } from './filters';
+import { REL_LABEL } from '../lib/labels';
+import type { Rel } from '../lib/schema';
+
+/** Every `Rel`, in schema order (its keys are declared in schema order) — `main.ts` only needs `import type` from `../lib/schema` (astro/zod must stay out of the bundle), so the runtime list comes from `REL_LABEL` the same way `filters.ts`/`interaction.ts`/`render.ts` derive theirs. */
+const ALL_RELS = Object.keys(REL_LABEL) as Rel[];
 
 const FLY_MS = 400;
 const KEY_FLY_MS = 160;
@@ -40,6 +47,10 @@ const PINCH_WHEEL_BOOST = 10;
 /** Below this width the panel is a bottom sheet. */
 const NARROW = 640;
 const THEME_KEY = 'starlight-theme';
+/** Max rows in the search dropdown (brief, binding). */
+const SEARCH_LIMIT = 8;
+/** Max Pagefind results shown in the full-text fallback section (brief, binding). */
+const PAGEFIND_LIMIT = 5;
 
 type Level = 0 | 1 | 2;
 
@@ -243,18 +254,20 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   const qt = buildQuadtree(data.nodes);
   const byId = new Map(data.nodes.map((n) => [n.id, n]));
   const ids = new Set(byId.keys());
-  /** Filter result (Task 13 replaces it); stable, never rebuilt per frame. */
+  /** Filter result, kept as one stable Set instance (`applyFilters` returns a fresh one each call; we copy it in). */
   const visible: Set<PageId> = new Set(ids);
   const centreNode = data.nodes.find(isRootNode) ?? data.nodes.find((n) => n.t === 'topic') ?? data.nodes[0];
 
   const reducedMq = media('(prefers-reduced-motion: reduce)');
-  const state: ViewState = { visible, reducedMotion: reducedMq?.matches === true, showEntities: false };
+  const state: ViewState = { visible, reducedMotion: reducedMq?.matches === true, showEntities: false, rels: new Set(ALL_RELS.map((_, i) => i)) };
   reducedMq?.addEventListener('change', () => {
     state.reducedMotion = reducedMq.matches;
     dirty = true;
   });
 
   const panel = createPanel(root, data, () => clearFocus());
+
+  let filters: Filters = { types: new Set(DEFAULT_FILTERS.types), rels: new Set(DEFAULT_FILTERS.rels), entities: DEFAULT_FILTERS.entities };
 
   let vw = Math.max(1, root.clientWidth || window.innerWidth);
   let vh = Math.max(1, root.clientHeight || window.innerHeight);
@@ -408,6 +421,243 @@ export async function initGraph(root: HTMLElement): Promise<void> {
     scheduleHash();
   };
 
+  /** `fitNode` level for a node flown to from search (brief, binding): root→0, topic→1, concept/source/entity→2. */
+  const levelFor = (n: GNode): Level => (isRootNode(n) ? 0 : n.t === 'topic' ? 1 : 2);
+
+  /** Fly to `n`, focus it and open the panel, pushing history the same way a click does (shared by click and search-select). */
+  const flyToNode = (n: GNode, level: Level): void => {
+    writeHash(); // settle the current view first so Back lands on it
+    setFocus(n.id);
+    panel.show(n);
+    flyCam(fitView(n, level), FLY_MS);
+    const h = encodeView({ node: n.id, z: level });
+    if (h !== location.hash) history.pushState(null, '', base() + h);
+    navHash = location.hash;
+    clearTimeout(hashTimer);
+  };
+
+  // ------------------------------------------------------- filters (Task 13)
+
+  /** Recompute `visible` from `filters` into the stable Set (brief: "main.ts copies it into the stable visible Set, clear + add"), update `showEntities`, and close the panel / clear focus if the current focus just became hidden. */
+  const applyFiltersNow = (): void => {
+    const next = applyFilters(data, filters);
+    visible.clear();
+    for (const id of next) visible.add(id);
+    state.showEntities = filters.entities;
+    state.rels = new Set(ALL_RELS.map((_, i) => i).filter((i) => filters.rels.has(ALL_RELS[i])));
+    if (focus !== undefined && !visible.has(focus)) clearFocus();
+    dirty = true;
+  };
+
+  // --------------------------------------------------------- search (Task 13)
+
+  const searchRoot = root.querySelector<HTMLElement>('#graph-search');
+  const searchInput = root.querySelector<HTMLInputElement>('#graph-search-input');
+  const listbox = root.querySelector<HTMLUListElement>('#graph-search-listbox');
+  const fulltext = root.querySelector<HTMLElement>('#graph-search-fulltext');
+  const fulltextList = fulltext?.querySelector<HTMLUListElement>('.graph-search__fulltext-list') ?? null;
+
+  /** Candidate node list for search: only nodes the current filters make visible (brief: "Entities are searchable only when filters.entities is on" — generalised to every filter, so a hidden source/entity never shows up as a search result either). */
+  const searchableNodes = (): GNode[] => data.nodes.filter((n) => visible.has(n.id));
+
+  let searchResults: GNode[] = [];
+  let searchActive = -1;
+
+  const closeListbox = (): void => {
+    if (listbox) {
+      listbox.replaceChildren();
+      listbox.hidden = true;
+    }
+    searchResults = [];
+    searchActive = -1;
+    searchInput?.setAttribute('aria-expanded', 'false');
+    searchInput?.removeAttribute('aria-activedescendant');
+  };
+  const hideFulltext = (): void => {
+    if (fulltext) fulltext.hidden = true;
+    if (fulltextList) fulltextList.replaceChildren();
+  };
+  const selectResult = (n: GNode): void => {
+    closeListbox();
+    hideFulltext();
+    if (searchInput) searchInput.value = '';
+    flyToNode(n, levelFor(n));
+  };
+  const renderListbox = (results: GNode[]): void => {
+    searchResults = results;
+    searchActive = -1;
+    if (!listbox) return;
+    listbox.replaceChildren();
+    if (results.length === 0) {
+      listbox.hidden = true;
+      searchInput?.setAttribute('aria-expanded', 'false');
+      return;
+    }
+    results.forEach((n, i) => {
+      const li = el('li', 'graph-search__option');
+      li.id = `graph-search-opt-${i}`;
+      li.setAttribute('role', 'option');
+      li.setAttribute('aria-selected', 'false');
+      li.append(el('span', 'graph-search__option-type', TYPE_LABEL[n.t]));
+      li.append(el('span', 'graph-search__option-title', n.l));
+      li.addEventListener('mousedown', (e) => {
+        e.preventDefault(); // keep focus in the input so a later keystroke still works
+        selectResult(n);
+      });
+      listbox.append(li);
+    });
+    listbox.hidden = false;
+    searchInput?.setAttribute('aria-expanded', 'true');
+  };
+  const highlight = (i: number): void => {
+    if (!listbox) return;
+    const options = listbox.querySelectorAll<HTMLElement>('.graph-search__option');
+    options.forEach((o, idx) => {
+      const on = idx === i;
+      o.setAttribute('aria-selected', String(on));
+      if (on) searchInput?.setAttribute('aria-activedescendant', o.id);
+    });
+    searchActive = i;
+  };
+  const renderFulltext = (items: { title: string; url: string }[] | null): void => {
+    if (!fulltext || !fulltextList) return;
+    fulltextList.replaceChildren();
+    fulltext.hidden = false;
+    if (items === null) {
+      fulltextList.append(el('li', 'graph-search__fulltext-empty', '全文搜索不可用'));
+    } else if (items.length === 0) {
+      fulltextList.append(el('li', 'graph-search__fulltext-empty', '无结果'));
+    } else {
+      for (const item of items) {
+        const li = el('li', '');
+        const a = el('a', '', item.title || item.url);
+        a.href = item.url;
+        li.append(a);
+        fulltextList.append(li);
+      }
+    }
+  };
+
+  /** Pagefind full-text fallback (brief, binding): dynamic import so Pagefind's runtime stays out of the graph bundle/budget. */
+  const pagefindFallback = async (q: string): Promise<void> => {
+    try {
+      type PagefindResult = { data(): Promise<{ meta: { title: string }; url: string }> };
+      type Pagefind = { search(q: string): Promise<{ results: PagefindResult[] }> };
+      const pf = (await import(/* @vite-ignore */ `${BASE}/pagefind/pagefind.js`)) as Pagefind;
+      const res = await pf.search(q);
+      const top = res.results.slice(0, PAGEFIND_LIMIT);
+      const items = await Promise.all(
+        top.map(async (r) => {
+          const d = await r.data();
+          return { title: d.meta.title, url: d.url };
+        }),
+      );
+      renderFulltext(items);
+    } catch {
+      renderFulltext(null);
+    }
+  };
+
+  const runSearch = (q: string): void => {
+    hideFulltext();
+    if (q.trim() === '') {
+      closeListbox();
+      return;
+    }
+    renderListbox(searchNodes(q, searchableNodes(), data.al, SEARCH_LIMIT));
+  };
+
+  searchInput?.addEventListener('input', () => runSearch(searchInput.value));
+  searchInput?.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowDown') {
+      if (searchResults.length === 0) return;
+      e.preventDefault();
+      highlight((searchActive + 1) % searchResults.length);
+    } else if (e.key === 'ArrowUp') {
+      if (searchResults.length === 0) return;
+      e.preventDefault();
+      highlight((searchActive - 1 + searchResults.length) % searchResults.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (searchResults.length > 0) {
+        selectResult(searchResults[searchActive >= 0 ? searchActive : 0]);
+      } else if (searchInput.value.trim() !== '') {
+        void pagefindFallback(searchInput.value.trim());
+      }
+    } else if (e.key === 'Escape') {
+      if (listbox && !listbox.hidden) {
+        closeListbox();
+      } else if (fulltext && !fulltext.hidden) {
+        hideFulltext();
+      } else {
+        // Nothing left for the search widget to close: let Escape close the panel too (the global handler ignores INPUT targets).
+        clearFocus();
+      }
+    }
+  });
+  searchRoot?.addEventListener('focusout', (e) => {
+    // Close only once focus has actually left the whole search widget (listbox clicks blur first via mousedown preventDefault above).
+    if (searchRoot.contains(e.relatedTarget as Node | null)) return;
+    closeListbox();
+  });
+
+  window.addEventListener('keydown', (e) => {
+    if (e.key !== '/' || e.defaultPrevented || e.altKey || e.ctrlKey || e.metaKey) return;
+    const t = e.target as HTMLElement | null;
+    if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
+    e.preventDefault();
+    searchInput?.focus();
+  });
+
+  // --------------------------------------------------------- filter panel
+
+  const filterBtn = root.querySelector<HTMLButtonElement>('#graph-filter-btn');
+  const filterPanel = root.querySelector<HTMLElement>('#graph-filter-panel');
+  const filterRoot = root.querySelector<HTMLElement>('.graph-filter');
+  const typeInputs = [...root.querySelectorAll<HTMLInputElement>('.graph-filter__type')];
+  const relInputs = [...root.querySelectorAll<HTMLInputElement>('.graph-filter__rel')];
+  const fromInput = root.querySelector<HTMLInputElement>('.graph-filter__from');
+  const toInput = root.querySelector<HTMLInputElement>('.graph-filter__to');
+  const entitiesInput = root.querySelector<HTMLInputElement>('#graph-filter-entities');
+
+  // Pagefind can index the graph page; the button is always shown once data loads (brief: "unhide #graph-filter-btn").
+  filterBtn?.removeAttribute('hidden');
+
+  const closeFilterPanel = (): void => {
+    if (!filterPanel || filterPanel.hidden) return;
+    filterPanel.hidden = true;
+    filterBtn?.setAttribute('aria-expanded', 'false');
+  };
+  const openFilterPanel = (): void => {
+    if (!filterPanel) return;
+    filterPanel.hidden = false;
+    filterBtn?.setAttribute('aria-expanded', 'true');
+  };
+  filterBtn?.addEventListener('click', () => {
+    if (filterPanel?.hidden === false) closeFilterPanel();
+    else openFilterPanel();
+  });
+  document.addEventListener('click', (e) => {
+    if (filterPanel?.hidden === false && filterRoot && !filterRoot.contains(e.target as Node)) closeFilterPanel();
+  });
+  window.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && filterPanel?.hidden === false) closeFilterPanel();
+  });
+
+  const readFiltersFromUI = (): void => {
+    filters = {
+      types: new Set(typeInputs.filter((i) => i.checked).map((i) => i.value as SourceType)),
+      rels: new Set(relInputs.filter((i) => i.checked).map((i) => i.value as Rel)),
+      entities: entitiesInput?.checked === true,
+      ...(fromInput?.value ? { from: fromInput.value } : {}),
+      ...(toInput?.value ? { to: toInput.value } : {}),
+    };
+    applyFiltersNow();
+  };
+  for (const input of [...typeInputs, ...relInputs, entitiesInput, fromInput, toInput]) {
+    input?.addEventListener('change', readFiltersFromUI);
+  }
+
   // --------------------------------------------------------------- input
 
   const local = (e: { clientX: number; clientY: number }): [number, number] => {
@@ -440,15 +690,7 @@ export async function initGraph(root: HTMLElement): Promise<void> {
       location.assign(act.href);
       return;
     }
-    writeHash(); // settle the current view first so Back lands on it
-    const target = byId.get(act.focus)!;
-    setFocus(target.id);
-    panel.show(target);
-    flyCam(fitView(target, act.level), FLY_MS);
-    const h = encodeView({ node: target.id, z: act.level });
-    if (h !== location.hash) history.pushState(null, '', base() + h);
-    navHash = location.hash;
-    clearTimeout(hashTimer);
+    flyToNode(byId.get(act.focus)!, act.level);
   };
 
   canvas.addEventListener(
