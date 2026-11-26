@@ -19,12 +19,12 @@ by:
   - { name: Yuqing Yang, role: author }
   - { name: Lili Qiu, role: author }
 relations:
-  - { concept: prompt-compression, rel: proposes, note: 用对齐过的小模型算困惑度，先按预算整段删示例、再分段迭代删 token，压缩后的提示词直接交给黑盒 LLM }
+  - { concept: prompt-compression, rel: extends, note: 在 Selective-Context 的小模型删减上加了预算控制、迭代式 token 压缩和分布对齐 }
 ---
 
 ## 新认知
 
-- **作者认为提示词可以在 LLM 之外压缩：用一个小模型算每个 token 的[困惑度](../glossary.md#perplexity)，删掉困惑度低的部分，压缩后的提示词仍能交给只能通过 API 访问的大模型（§1¶1、§1¶3）**；这是本库[提示词压缩](../concepts/prompt-compression.md)一页的最早来源。
+- **LLMLingua 在 Selective-Context 用小模型删掉低信息量内容的做法上，加了预算控制、迭代式 token 压缩和分布对齐（§1¶3、§2.1¶4），删减仍在 LLM 之外完成，压缩后的提示词能直接交给只能通过 API 访问的模型（§1¶1）**；见[提示词压缩](../concepts/prompt-compression.md)。
 - 提示词各部分的冗余度不同：指令和问题直接决定输出，多个示例之间信息重复（§4.1¶2），所以[提示词压缩](../concepts/prompt-compression.md#设计空间)要按部分分配预算，示例压得最狠。
 - 压缩率高时逐 token 删会把提示词删得支离破碎，作者先整段丢示例、再删 token（§4.1¶3）；消融里去掉预算控制，GSM8K 从 79.08 降到 73.62（Tab. 3），见[提示词压缩](../concepts/prompt-compression.md)。
 - 逐 token 按困惑度删有独立性假设的问题，作者把前一段压缩后的结果接到后一段之前再算困惑度（§4.2¶3）；去掉这一步 GSM8K 降到 72.93（Tab. 3），是消融里掉得最多的一项，见[提示词压缩](../concepts/prompt-compression.md)。

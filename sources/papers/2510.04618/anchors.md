@@ -94,3 +94,4 @@
 - §3.1¶2: "so only the relevant bullets are updated"
 - §4.1¶1: "with ACE, agents can accumulate and reuse strategies across episodes and environments"
 - §2.2¶2: "at step 60 the context contained 18,282 tokens and achieved an accuracy of 66.7, but at the very next step it collapsed to just 122 tokens, with accuracy dropping to 57.1—worse than the baseline accuracy of 63.7 without adaptation"
+- §5¶1: "ACE offers a flexible and efficient alternative to conventional model fine-tuning"

@@ -24,7 +24,7 @@ type: raw
 - [AI 研发加速度量](concepts/ai-rd-uplift-measurement.md) — 用外部基准、内部产出和受控研究任务，衡量 AI 把 AI 研发本身加快了多少
 - [AI 研发中的人类瓶颈](concepts/human-bottleneck-in-ai-rd.md) — 执行环节交给 AI 后，人工审查和定研究方向成为限制整体研发速度的环节
 - [可验证的协调放缓](concepts/verifiable-coordinated-slowdown.md) — 多家前沿实验室在能相互核实的前提下，按相同条件同时放缓或暂停前沿 AI 开发
-- [记忆笔记](concepts/memory-notes.md) — 模型把跨任务学到的规则和教训写成笔记并反复改写，让后续任务做得更好
+- [记忆笔记](concepts/memory-notes.md) — 模型把跨任务学到的规则和教训写成笔记，反复改写或逐条补充，让后续任务做得更好
 - [连续任务流评测](concepts/streaming-task-evaluation.md) — 把前后依赖的任务按顺序连成一条流让 agent 边做边学，用来测持续学习能力
 - [记忆流与反思](concepts/memory-stream-reflection.md) — 把全部经历按时间记成自然语言流，按近因、重要性、相关性取回，并定期提炼出更高层的反思写回
 - [写入时记忆整合](concepts/memory-consolidation.md) — 新信息写入时取出相似旧记忆，由 LLM 决定新增、改写、合并或删除，让记忆库保持一致

@@ -3,7 +3,7 @@ title: 提示词压缩
 type: concept
 summary: 在不改目标模型的前提下删减提示词里的 token，只保留目标模型完成任务需要的部分
 topics: [context]
-aliases: [prompt compression, 提示压缩, token-level prompt compression, coarse-to-fine prompt compression]
+aliases: [prompt compression, 提示压缩]
 added: 2026-11-27
 status: emerging
 relations:
@@ -15,7 +15,7 @@ relations:
 
 来源：[LLMLingua](../papers/202310-llmlingua.md)
 
-在提示词交给目标 LLM 之前删掉其中冗余的部分，让目标模型在更短的输入上给出与原输入尽量接近的输出（§3¶1）；删什么由一个外部的小模型按困惑度决定，目标模型本身不改，所以只能通过 API 访问的模型也能用（§1¶1、§6¶1）。它要解决的问题是：思维链、few-shot 示例和检索让提示词越来越长，推理成本随之上升（§1¶1）。
+在提示词交给目标 LLM 之前把它变短，让目标模型在更短的输入上给出与原输入尽量接近的输出，目标模型本身不改（§3¶1、§1¶1）；按困惑度删 token 是其中一条路线，见设计空间。它要解决的问题是：思维链、few-shot 示例和检索让提示词越来越长，推理成本随之上升（§1¶1）。
 
 它与[频繁上下文压缩](frequent-context-compaction.md)都让输入变短，区别在由谁、怎样删：这里由外部小模型删 token，保留原文的词句；频繁压缩由执行任务的模型自己写摘要。
 
@@ -38,8 +38,8 @@ relations:
 ## 共识与分歧
 
 - 生成式压缩靠不靠得住，两份素材看法不同。LLMLingua 作者报告，GSM8K 上让 GPT-4 改写压缩到 20 倍只有 56.33，LLMLingua 是 77.33（[LLMLingua](../papers/202310-llmlingua.md) Tab. 2），并认为生成式压缩会漏掉推理步骤（[LLMLingua](../papers/202310-llmlingua.md) §5.3¶2）。NVIDIA 作者让执行任务的模型自己写交接摘要，报告长程任务准确率大体持平（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §3¶4）。两者压缩的对象不同：LLMLingua 压的是 few-shot 示例里的推理链，NVIDIA 压的是 agent 的历史轨迹，没有直接对照。
-- ACE 作者反对把上下文压短：他们认为上下文应当保留详尽的领域策略，由模型在推理时自己挑（[ACE](../papers/202510-ace.md) §1¶4）。他们针对的是跨任务积累的 playbook，不是单次调用的输入，见[记忆笔记](memory-notes.md#设计空间)。
-- 截至 2026-11，本库只有 LLMLingua 一份素材直接提出提示词压缩，所以 status 为 emerging。
+- ACE 作者反对把上下文压短：他们认为上下文应当保留详尽的领域策略，由模型在推理时自己挑（[ACE](../papers/202510-ace.md) §1¶4）。他们针对的是跨任务积累的 playbook，LLMLingua 压缩的则是单次调用的输入，见[记忆笔记](memory-notes.md#设计空间)。
+- 截至 2026-11，本库唯一来源是 LLMLingua；更早的 Selective-Context 未收录，所以 status 为 emerging。
 
 ## 开放问题
 

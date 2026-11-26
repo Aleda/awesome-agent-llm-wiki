@@ -1,7 +1,7 @@
 ---
 title: 记忆笔记
 type: concept
-summary: 模型把跨任务学到的规则和教训写成笔记并反复改写，让后续任务做得更好
+summary: 模型把跨任务学到的规则和教训写成笔记，反复改写或逐条补充，让后续任务做得更好
 topics: [continual-learning, memory, context]
 aliases: [memory notes, 经验笔记, notes-based continual learning, 记忆笔记式持续学习, evolving playbook]
 added: 2026-11-27

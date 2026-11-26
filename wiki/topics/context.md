@@ -33,7 +33,7 @@ agent 的工作信息随步数增长：工具输出、环境观察、中间推�
 
 ### 上下文作为可迭代的对象
 
-- [记忆笔记](../concepts/memory-notes.md)：把系统提示和 agent 记忆当作跨任务逐条积累的 playbook，由模型提炼教训、只做增量更新（[ACE](../papers/202510-ace.md)）。这一页同时属于 memory 和 continual learning 方向；ACE 称之为 context engineering，它与[模型自管理上下文](../concepts/model-managed-context.md#设计空间)的比较见那一页的设计空间表。
+- [记忆笔记](../concepts/memory-notes.md)：模型把跨任务学到的规则和教训写成笔记，在之后的任务里读回并持续修改。[ACE](../papers/202510-ace.md) 是其中的增量更新变体：把系统提示和 agent 记忆拆成逐条积累的 playbook，由模型提炼教训，只追加或局部更新条目。这一页同时属于 memory 和 continual learning 方向；ACE 称之为 context engineering，它与[模型自管理上下文](../concepts/model-managed-context.md#设计空间)的比较见那一页的设计空间表。
 
 ## 关键争论
 
