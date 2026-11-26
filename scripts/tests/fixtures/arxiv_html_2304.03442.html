@@ -1,0 +1,52 @@
+<!-- Trimmed, hand-extracted snippet of real markup from
+     https://arxiv.org/html/2304.03442 (Generative Agents; fetched 2026-11-27),
+     covering the real-world variants missed by the pre-task-23_5 regex
+     parser (ACM-style LaTeXML output):
+     1. Section tag spans use "1. " (number + period + space), not "1 " —
+        the old NUMERIC_SECTION_RE.strip(" .") step must still land on "1".
+     2. Figure captions use the same "Figure 1. " period style directly in
+        the ltx_tag_figure span (no colon), with a redundant nested
+        <span class="ltx_acm_description"> alt-caption appended after the
+        visible caption text (ACM template boilerplate) that must still be
+        captured as part of the description, not silently dropped.
+     3. The old regex `FIGURE_CAPTION_HTML_RE` anchored on a literal
+        "Figure\s+(\d+):\s*</span>" immediately inside the tag span, so it
+        never matched this paper's "Figure 1. </span>" period style at
+        all — hence "ALL figure captions missed" in the real run.
+     Table markup is correctly absent: this paper has no <table>/ltx_table
+     element at all (confirmed against the committed anchors.md, which has
+     no "- Tab." lines either). -->
+<!DOCTYPE html>
+<html>
+<head><title>Generative Agents: Interactive Simulacra of Human Behavior</title></head>
+<body>
+<article class="ltx_document">
+<h1 class="ltx_title ltx_title_document">Generative Agents: Interactive Simulacra of Human Behavior</h1>
+
+<figure id="S0.F1" class="ltx_figure ltx_teaserfigure"><img src="2304.03442v2/figures/figure_cover4.png" id="S0.F1.g1" class="ltx_graphics ltx_img_landscape" style="aspect-ratio:476/252;" width="476" height="252" alt="A screenshot of the game world populated by generative agents.">
+<figcaption class="ltx_caption"><span class="ltx_tag ltx_tag_figure">Figure 1. </span>Generative agents are believable simulacra of human behavior for interactive applications. In this work, we demonstrate generative agents by populating a sandbox environment, reminiscent of The Sims, with twenty-five agents. Users can observe and intervene as agents plan their days, share news, form relationships, and coordinate group activities.<span id="acmlabel1" class="ltx_nodisplay ltx_acm_description">A screenshot of the game world populated by generative agents.</span></figcaption>
+</figure>
+
+<section id="S1" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">1. </span>Introduction</h2>
+<p class="ltx_p">Not all tokens are generated equal.</p>
+</section>
+
+<section id="S2" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">2. </span>Related Work</h2>
+<p class="ltx_p">Prior systems hand-author believable agent behavior.</p>
+
+<figure id="S2.F2" class="ltx_figure"><img src="2304.03442v2/figures/figure_map5.png" id="S2.F2.g1" class="ltx_graphics ltx_centering ltx_img_landscape" style="aspect-ratio:467/197;" width="467" height="197" alt="The labeled map of the game world.">
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure">Figure 2. </span>The Smallville sandbox world, with areas labeled. The root node describes the entire world, children describe areas (e.g., houses, cafe, stores), and leaf nodes describe objects (e.g., table, bookshelf).<span id="acmlabel2" class="ltx_acm_description ltx_centering ltx_nodisplay">The labeled map of the game world.</span></figcaption>
+</figure>
+</section>
+
+<section id="S3" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">3. </span>Generative Agent Behavior and Interaction</h2>
+<p class="ltx_p">To illustrate the affordances of generative agents, we instantiate them as characters in a sandbox world.</p>
+</section>
+
+</article>
+</body>
+</html>
+</content>

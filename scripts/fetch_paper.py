@@ -40,6 +40,7 @@ import argparse
 import re
 import sys
 import time
+from html.parser import HTMLParser
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -232,61 +233,228 @@ def _truncate(text: str, max_chars: int) -> str:
     return window
 
 
-SECTION_HEADING_HTML_RE = re.compile(
-    r'<h[0-9]\s+class="ltx_title ltx_title_(section|subsection|subsubsection)">'
-    r'<span class="ltx_tag ltx_tag_(?:section|subsection|subsubsection)">([^<]*)</span>'
-    r"(.*?)</h[0-9]>",
-    re.S,
-)
-FIGURE_CAPTION_HTML_RE = re.compile(
-    r'<figcaption class="ltx_caption[^"]*"[^>]*>\s*'
-    r'<span class="ltx_tag ltx_tag_figure">Figure\s+(\d+):\s*</span>'
-    r"(.*?)</figcaption>",
-    re.S,
-)
-TABLE_CAPTION_HTML_RE = re.compile(
-    r'<figcaption class="ltx_caption[^"]*"[^>]*>\s*'
-    r'<span class="ltx_tag ltx_tag_(?:figure|table)">Table\s+(\d+):\s*</span>'
-    r"(.*?)</figcaption>",
-    re.S,
-)
+SECTION_LEVEL_CLASS_RE = re.compile(r"\bltx_title_(section|subsection|subsubsection)\b")
+TAG_LABEL_CLASS_RE = re.compile(r"\bltx_tag\b")
+TARGET_FIGURE_CLASS_RE = re.compile(r"\bltx_(?:figure|table)\b")
+FIGTAB_LABEL_RE = re.compile(r"^(Fig(?:ure)?|Tab(?:le)?)\.?\s*(\d+)[:.]?$")
+
+
+class _HTMLAnchorWalker(HTMLParser):
+    """Tag-aware walker for arXiv's LaTeXML HTML, replacing the previous
+    regex-only `anchors_from_html` (which matched one fixed markup shape per
+    anchor kind and missed every real-world variant: nested `<span>`s
+    around the tag number, `Figure N.`/`Fig.` label spellings, captions
+    living in `<figure class="ltx_figure_panel">` wrappers, and several
+    `<figcaption>`s sharing one outer `<figure>` for an inline subfigure
+    group — see fix round 2 / task-23_5).
+
+    Walks the document with an explicit open-tag stack. Each stack frame
+    records enough for `handle_endtag` to decide, at close time, whether it
+    closed:
+
+    - a numbered heading (`<h1>`–`<h6> class="ltx_title ltx_title_section
+      |subsection|subsubsection">`): its direct text is split into *label*
+      (text inside the nearest descendant `<span class="ltx_tag ...">`,
+      at any nesting depth — Defect 2's "nested `<span>` in section
+      titles" generalised) and *title* (everything else at any depth);
+    - a `<figure>`/`<table>` whose `class` contains `ltx_figure` or
+      `ltx_table` (a "target" figure, regardless of what other classes —
+      `ltx_figure_panel`, `ltx_align_*`, … — it also carries, since those
+      vary across papers and are not diagnostic of whether a caption is
+      numbered): each direct `<figcaption>` found anywhere inside it
+      *except inside a nested target figure* (a subfigure panel) is
+      recorded, label vs. rest split the same way as headings. A single
+      outer `<figure>` can hold more than one direct `<figcaption>` when
+      LaTeXML renders a `{subfigure}` group inline instead of as nested
+      `<figure>`s (e.g. arXiv 2609.37725's Figures 6/7/8 under one
+      `<figure id="S5.F8">`); each becomes its own anchor candidate.
+
+    Classification of a caption as a figure or a table is done from its
+    *label word* ("Figure"/"Fig."/"Table"/"Tab.") rather than from the
+    outer tag's class or the tag-span's own class — arXiv is inconsistent
+    about labelling an actual table's tag span `ltx_tag_figure` instead of
+    `ltx_tag_table` (task-19_5's original finding), and this generalises
+    that fix to the walker. A caption whose label doesn't parse as one of
+    those four forms (e.g. a subfigure panel's bare `(a)`/`(b)`) is not a
+    numbered figure/table and is dropped, which is how "skip subfigure
+    panels without their own number" (brief R) falls out naturally rather
+    than needing a separate panel-detection rule.
+    """
+
+    VOID_TAGS = frozenset(
+        {
+            "area", "base", "br", "col", "embed", "hr", "img", "input",
+            "link", "meta", "param", "source", "track", "wbr",
+        }
+    )
+
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.stack: list[dict] = []
+        self.sections: list[tuple[str, str, str]] = []  # (classes, label_html, title_html)
+        self.figures: list[tuple[str, str]] = []  # (label_html, rest_html)
+
+    def _enclosing_target_figure(self) -> dict | None:
+        for frame in reversed(self.stack):
+            if frame.get("is_target_figure"):
+                return frame
+        return None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        cls = dict(attrs).get("class") or ""
+        frame: dict = {"tag": tag, "classes": cls}
+
+        frame["is_heading"] = bool(
+            re.match(r"h[1-6]$", tag) and SECTION_LEVEL_CLASS_RE.search(cls)
+        )
+        if frame["is_heading"]:
+            frame["label_parts"] = []
+            frame["title_parts"] = []
+
+        is_target = tag in ("figure", "table") and bool(TARGET_FIGURE_CLASS_RE.search(cls))
+        frame["is_target_figure"] = is_target
+        if is_target:
+            frame["figcaptions_raw"] = []
+
+        frame["is_figcaption"] = tag == "figcaption"
+        if frame["is_figcaption"]:
+            frame["cap_parts"] = []
+
+        frame["is_tag_label_span"] = tag == "span" and bool(TAG_LABEL_CLASS_RE.search(cls))
+
+        if tag not in self.VOID_TAGS:
+            self.stack.append(frame)
+
+    def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        pass  # self-closed/void tags carry no text of interest here
+
+    def _current_target(self) -> tuple[str | None, dict | None, bool]:
+        """The innermost open heading or figcaption frame (figcaption takes
+        priority — headings never nest inside figcaptions in this markup),
+        plus whether the parser is currently inside a descendant
+        `ltx_tag` label span of that frame.
+        """
+        heading_frame = None
+        figcaption_frame = None
+        in_label = False
+        for frame in self.stack:
+            if frame.get("is_heading"):
+                heading_frame = frame
+                in_label = False
+            elif frame.get("is_figcaption"):
+                figcaption_frame = frame
+                heading_frame = None
+                in_label = False
+            if frame.get("is_tag_label_span") and (heading_frame is not None or figcaption_frame is not None):
+                in_label = True
+        if figcaption_frame is not None:
+            return "figcaption", figcaption_frame, in_label
+        if heading_frame is not None:
+            return "heading", heading_frame, in_label
+        return None, None, False
+
+    def handle_data(self, data: str) -> None:
+        kind, frame, in_label = self._current_target()
+        if kind == "figcaption":
+            frame["cap_parts"].append((in_label, data))
+        elif kind == "heading":
+            (frame["label_parts"] if in_label else frame["title_parts"]).append(data)
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag in self.VOID_TAGS:
+            return
+        idx = None
+        for i in range(len(self.stack) - 1, -1, -1):
+            if self.stack[i]["tag"] == tag:
+                idx = i
+                break
+        if idx is None:
+            return  # unmatched close tag — ignore rather than corrupt the stack
+        frame = self.stack[idx]
+
+        if frame.get("is_figcaption"):
+            # Attribute this figcaption to its nearest enclosing <figure>/
+            # <table>, but only if that ancestor is itself a target figure
+            # (not, e.g., some other wrapper) — a nested *target* figure
+            # (a subfigure panel) is its own owner, so its figcaption never
+            # attaches to the outer one.
+            owner = None
+            for i in range(idx - 1, -1, -1):
+                if self.stack[i]["tag"] in ("figure", "table"):
+                    if self.stack[i].get("is_target_figure"):
+                        owner = self.stack[i]
+                    break
+            if owner is not None:
+                label_html = "".join(text for is_label, text in frame["cap_parts"] if is_label)
+                rest_html = "".join(text for is_label, text in frame["cap_parts"] if not is_label)
+                owner["figcaptions_raw"].append((label_html, rest_html))
+
+        if frame.get("is_heading"):
+            self.sections.append(
+                (frame["classes"], "".join(frame["label_parts"]), "".join(frame["title_parts"]))
+            )
+
+        if frame.get("is_target_figure"):
+            for label_html, rest_html in frame["figcaptions_raw"]:
+                self.figures.append((label_html, rest_html))
+
+        del self.stack[idx:]
 
 
 def anchors_from_html(html: str) -> list[str]:
-    """Extract anchor lines from arXiv's LaTeXML HTML rendering: section
-    headings (`.ltx_title_section`/`subsection`/`subsubsection`, tagged
-    with a numeric id like "3.2 ") become `## §3.2 <title>`; figure
-    captions ("Figure 4: …") become `- Fig. 4 — <desc>` (desc truncated to
-    120 chars); table captions become `- Tab. 2 — <desc>` likewise.
+    """Extract anchor lines from arXiv's LaTeXML HTML rendering via a
+    tag-aware walk (`_HTMLAnchorWalker`) rather than fixed-shape regexes:
+    numbered section/subsection/subsubsection headings become
+    `## §<num> <title>`; figure captions become `- Fig. <n> — <desc>`
+    (desc truncated to 120 chars); table captions become
+    `- Tab. <n> — <desc>` likewise. Output order is sections (in document
+    order), then figures (in document order), then tables (in document
+    order) — matching the previous implementation's grouping, which
+    `merge_anchors`'s append-only dedup and every committed `anchors.md`
+    already rely on.
 
     Appendix sections (`ltx_title_appendix`, ids like "A", "A.1") are
     deliberately skipped: the shared `§` grammar in `lib/anchors.py` only
     recognises `\\d+(\\.\\d+)*` keys, and extending it is out of scope
     (Task 17 binding decisions) — so appendix headings produce no anchor
     line at all, section numbering falls through to the next numeric
-    heading unaffected.
+    heading unaffected. A subfigure panel's caption (e.g. `(a)`, `(b)`)
+    produces no anchor either, since its label doesn't parse as
+    `Figure N`/`Fig. N`/`Table N`/`Tab. N` (brief R: "skip subfigure panels
+    without their own number").
     """
+    walker = _HTMLAnchorWalker()
+    walker.feed(html)
+
     anchors: list[str] = []
 
-    for match in SECTION_HEADING_HTML_RE.finditer(html):
-        raw_num, title = match.group(2), match.group(3)
-        num = raw_num.strip()
+    for _classes, label_html, title_html in walker.sections:
+        label = _strip_tags(label_html).strip()
+        num = label.rstrip(". ").strip()
         if not NUMERIC_SECTION_RE.match(num):
             continue  # appendix id (e.g. "A", "A.1") — skip per binding decisions
-        title = _strip_tags(title).strip(" .")
+        title = _strip_tags(title_html).strip(" .")
         if title:
             anchors.append(f"## §{num} {title}")
 
-    for match in FIGURE_CAPTION_HTML_RE.finditer(html):
-        n, desc = match.group(1), match.group(2)
-        desc = _truncate(_strip_tags(desc), CAPTION_MAX_CHARS)
-        anchors.append(f"- Fig. {n} — {desc}")
+    figs: list[str] = []
+    tabs: list[str] = []
+    for label_html, rest_html in walker.figures:
+        label_text = _strip_tags(label_html).strip()
+        match = FIGTAB_LABEL_RE.match(label_text)
+        if not match:
+            continue  # unnumbered subfigure panel caption, e.g. "(a)"
+        word, n = match.group(1), match.group(2)
+        desc = _truncate(_strip_tags(rest_html), CAPTION_MAX_CHARS)
+        if not desc:
+            continue
+        if word.startswith("Tab"):
+            tabs.append(f"- Tab. {n} — {desc}")
+        else:
+            figs.append(f"- Fig. {n} — {desc}")
 
-    for match in TABLE_CAPTION_HTML_RE.finditer(html):
-        n, desc = match.group(1), match.group(2)
-        desc = _truncate(_strip_tags(desc), CAPTION_MAX_CHARS)
-        anchors.append(f"- Tab. {n} — {desc}")
-
+    anchors.extend(figs)
+    anchors.extend(tabs)
     return anchors
 
 

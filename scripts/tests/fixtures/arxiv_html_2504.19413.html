@@ -1,0 +1,71 @@
+<!-- Trimmed, hand-extracted snippet of real markup from
+     https://arxiv.org/html/2504.19413 (Mem0; fetched 2026-11-27), covering
+     real-world variants missed by the pre-task-23_5 regex parser:
+     1. Figure 1's *outer* <figure> itself carries
+        class="ltx_figure ltx_figure_panel ltx_minipage ..." — the
+        ltx_figure_panel class (normally a subfigure-panel marker) is also
+        used here on a figure that has its own number and direct
+        figcaption, so panel detection must not key off that class at all;
+        only whether the caption's label parses as "Figure N" decides.
+     2. Figure 4 is a *real* subfigure group: one outer <figure id="S4.F4">
+        contains two nested <figure class="ltx_figure_panel"> children,
+        each with its own un-numbered "(a)"/"(b)" <figcaption>, followed by
+        the outer figure's own numbered "Figure 4: " <figcaption> as a
+        sibling after the nested figures close. The (a)/(b) figcaptions
+        must be skipped (R: "skip subfigure panels without their own
+        number") while "Figure 4" is kept — exercising true nesting rather
+        than the inline-flex-div-without-nested-<figure> shape in the
+        2502.12110 fixture.
+     3. Table 1's caption contains an inline <math alttext="\uparrow"> with
+        a nested <annotation> duplicating the alttext as text (fix round 1,
+        item 2's MathML dedup, now exercised through the new tag-aware
+        walker's figcaption text collection instead of a flat regex match). -->
+<!DOCTYPE html>
+<html>
+<head><title>Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory</title></head>
+<body>
+<article class="ltx_document">
+<h1 class="ltx_title ltx_title_document">Mem0: Building Production-Ready AI Agents with Scalable Long-Term Memory</h1>
+
+<section id="S1" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">1 </span>Introduction</h2>
+
+<figure id="S1.F1" class="ltx_figure ltx_figure_panel ltx_minipage ltx_align_center ltx_align_top" style="width:110.4pt;">
+<div id="S1.F1.1" class="ltx_block ltx_figure_panel ltx_minipage ltx_align_center ltx_align_top" style="width:224.3pt;"><img src="2504.19413v1/figures/main_figure.png" id="S1.g1" class="ltx_graphics ltx_centering ltx_img_landscape" style="aspect-ratio:310/151;" width="310" height="151" alt="Refer to caption">
+</div>
+<figcaption class="ltx_caption"><span class="ltx_tag ltx_tag_figure"><span id="S1.F1.7" class="ltx_text" style="font-size:90%;">Figure 1</span>: </span><span id="S1.F1.8" class="ltx_text ltx_font_bold" style="font-size:90%;">Illustration of memory importance in AI agents.</span></figcaption>
+</figure>
+</section>
+
+<section id="S2" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">2 </span>Proposed Methods</h2>
+</section>
+
+<section id="S3" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">3 </span>Experimental Setup</h2>
+
+<figure id="S3.T1" class="ltx_table">
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_table"><span id="S3.T1.7" class="ltx_text" style="font-size:90%;">Table 1</span>: </span><span id="S3.T1.8" class="ltx_text" style="font-size:90%;">Performance comparison of memory-enabled systems across different question types in the LOCOMO dataset. (<math id="S3.T1.m6" class="ltx_Math" alttext="\uparrow" display="inline" intent=":literal"><semantics><mo stretchy="false">↑</mo><annotation encoding="application/x-tex">\uparrow</annotation></semantics></math>) represents higher score is better.</span></figcaption>
+</figure>
+</section>
+
+<section id="S4" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">4 </span>Evaluation Results, Analysis and Discussion</h2>
+
+<figure id="S4.F4" class="ltx_figure">
+<div class="ltx_flex_figure">
+<div class="ltx_flex_cell ltx_flex_size_1">
+<figure id="S4.F4.sf1" class="ltx_figure ltx_figure_panel ltx_align_center"><img src="2504.19413v1/figures/latency_search.png" id="S4.F4.sf1.g1" class="ltx_graphics ltx_centering ltx_img_landscape" style="aspect-ratio:462/194;" width="462" height="194" alt="Refer to caption">
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure"><span id="S4.F4.sf1.5" class="ltx_text" style="font-size:90%;">(a)</span> </span><span id="S4.F4.sf1.6" class="ltx_text" style="font-size:90%;">Comparison of search latency at p50 and p95.</span></figcaption>
+</figure></div><div class="ltx_flex_break"></div><div class="ltx_flex_cell ltx_flex_size_1">
+<figure id="S4.F4.sf2" class="ltx_figure ltx_figure_panel ltx_align_center"><img src="2504.19413v1/figures/latency_total.png" id="S4.F4.sf2.g1" class="ltx_graphics ltx_centering ltx_img_landscape" style="aspect-ratio:462/194;" width="462" height="194" alt="Refer to caption">
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure"><span id="S4.F4.sf2.5" class="ltx_text" style="font-size:90%;">(b)</span> </span><span id="S4.F4.sf2.6" class="ltx_text" style="font-size:90%;">Comparison of total response latency at p50 and p95.</span></figcaption>
+</figure></div></div>
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_figure"><span id="S4.F4.6" class="ltx_text" style="font-size:90%;">Figure 4</span>: </span><span id="S4.F4.7" class="ltx_text ltx_font_bold" style="font-size:90%;">Latency Analysis of Different Memory Approaches.</span></figcaption>
+</figure>
+</section>
+
+</article>
+</body>
+</html>
+</content>

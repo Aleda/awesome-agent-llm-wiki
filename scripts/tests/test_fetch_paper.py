@@ -1,6 +1,7 @@
 """Tests for scripts/fetch_paper.py (Task 17; fix round 1 additions for
 caption truncation without `…`, MathML annotation/alttext de-duplication,
-the post-write self-check, and mocked `_get`/`_throttle` behavior).
+the post-write self-check, and mocked `_get`/`_throttle` behavior; fix
+round 2 / task-23_5's tag-aware `anchors_from_html` rewrite).
 
 Fixtures:
 - `arxiv_atom.xml` — real Atom API response for id_list=2611.05306 (retrieved
@@ -12,6 +13,25 @@ Fixtures:
   (non-numeric per the shared `§` grammar — `\\d+(\\.\\d+)*`). Also includes
   a `<math alttext="...">` element with a nested `<annotation>` (fix round 1,
   item 2) in the Figure 1 caption.
+- `arxiv_html_snippet_s5.html` — real markup shape from
+  https://arxiv.org/html/2609.37725, §5 area (task-19_5 defect 2): nested
+  `<span>` inside a subsection title, and a table captioned with the
+  `ltx_tag_figure` class instead of `ltx_tag_table`.
+- `arxiv_html_2304.03442.html`, `arxiv_html_2502.12110.html`,
+  `arxiv_html_2504.19413.html` — hand-trimmed snippets of real markup from
+  arXiv 2304.03442 (Generative Agents), 2502.12110 (A-MEM) and 2504.19413
+  (Mem0) respectively (fetched 2026-11-27; task-23_5), each exercising the
+  specific LaTeXML variants the pre-rewrite regex parser missed: ACM-style
+  "Figure 1. " period labels with a redundant nested `ltx_acm_description`
+  span (2304.03442); the figure/table number living in its own nested
+  `<span>` inside the `ltx_tag` span, with the colon in the outer span's
+  trailing text (2502.12110, 2504.19413); an outer `<figure>` itself
+  carrying the `ltx_figure_panel` class despite having its own number and
+  direct caption (2504.19413's Figure 1); and a real nested subfigure
+  group — an outer numbered `<figure id="S4.F4">` wrapping two inner
+  `<figure class="ltx_figure_panel">` children with their own un-numbered
+  "(a)"/"(b)" captions — that must only yield the outer "Figure 4" anchor
+  (2504.19413's Figure 4).
 - `pdf_text.txt` — a hand-built excerpt in the shape of pypdf's text
   extraction for the same paper (used for the HTML-absent fallback path).
 """
@@ -44,6 +64,9 @@ ATOM_XML = (FIXTURES / "arxiv_atom.xml").read_text(encoding="utf-8")
 HTML = (FIXTURES / "arxiv_html_snippet.html").read_text(encoding="utf-8")
 PDF_TEXT = (FIXTURES / "pdf_text.txt").read_text(encoding="utf-8")
 HTML_S5 = (FIXTURES / "arxiv_html_snippet_s5.html").read_text(encoding="utf-8")
+HTML_2304 = (FIXTURES / "arxiv_html_2304.03442.html").read_text(encoding="utf-8")
+HTML_2502 = (FIXTURES / "arxiv_html_2502.12110.html").read_text(encoding="utf-8")
+HTML_2504 = (FIXTURES / "arxiv_html_2504.19413.html").read_text(encoding="utf-8")
 
 
 def test_fixtures_are_small():
@@ -51,6 +74,9 @@ def test_fixtures_are_small():
         "arxiv_atom.xml",
         "arxiv_html_snippet.html",
         "arxiv_html_snippet_s5.html",
+        "arxiv_html_2304.03442.html",
+        "arxiv_html_2502.12110.html",
+        "arxiv_html_2504.19413.html",
         "pdf_text.txt",
     ):
         assert (FIXTURES / name).stat().st_size < 30 * 1024
@@ -170,6 +196,87 @@ def test_anchors_from_html_s5_fixture_has_no_regression_on_old_cases():
     assert anchors[:2] == ["## §1 Introduction", "## §3.2 Method"]
     assert any(a.startswith("- Fig. 1 —") for a in anchors)
     assert any(a.startswith("- Tab. 2 —") for a in anchors)
+
+
+# ---------------------------------------------------------------------------
+# Fix round 2 (task-23_5): tag-aware `anchors_from_html` rewrite using
+# `html.parser`. Each fixture below is a trimmed snippet of a real arXiv
+# HTML page where the previous regex-only parser missed captions/sections
+# entirely (see each fixture's own header comment for the specific markup
+# variant it exercises).
+# ---------------------------------------------------------------------------
+
+
+def test_anchors_from_html_2304_acm_style_period_labels_and_sections():
+    # Generative Agents (2304.03442): ACM-style "Figure 1. " period label
+    # (no colon) directly in the ltx_tag_figure span, plus a redundant
+    # nested ltx_acm_description alt-caption span after the visible text —
+    # the old FIGURE_CAPTION_HTML_RE only matched "Figure N: ", so every
+    # figure caption in this paper was missed.
+    anchors = anchors_from_html(HTML_2304)
+    assert anchors == [
+        "## §1 Introduction",
+        "## §2 Related Work",
+        "## §3 Generative Agent Behavior and Interaction",
+        "- Fig. 1 — Generative agents are believable simulacra of human "
+        "behavior for interactive applications.",
+        "- Fig. 2 — The Smallville sandbox world, with areas labeled. The "
+        "root node describes the entire world, children describe areas (e.",
+    ]
+
+
+def test_anchors_from_html_2502_nested_number_span_in_tag_and_table():
+    # A-MEM (2502.12110): the figure/table number sits in its own nested
+    # <span> *inside* the ltx_tag span, with the ":" in the outer span's
+    # trailing text (not a flat "Figure N: " run) — the old
+    # FIGURE_CAPTION_HTML_RE/TABLE_CAPTION_HTML_RE never matched this shape
+    # at all, so every figure AND table caption was missed. Figure 1's
+    # outer <figure> also contains two un-numbered "(a)"/"(b)" subfigure
+    # <p> captions (not <figcaption>s) before its own direct figcaption.
+    anchors = anchors_from_html(HTML_2502)
+    assert anchors == [
+        "## §1 Introduction",
+        "## §3 Methodolodgy",
+        "## §3.1 Note Construction",
+        "## §4 Experiment",
+        "- Fig. 1 — Traditional memory systems require predefined memory "
+        "access patterns specified in the workflow, limiting their",
+        "- Tab. 1 — Experimental results on LoCoMo dataset of QA tasks "
+        "across five categories (Multi Hop, Temporal, Open Domain, Single",
+    ]
+
+
+def test_anchors_from_html_2504_panel_class_on_numbered_figure_and_real_subfigures():
+    # Mem0 (2504.19413): Figure 1's *outer* <figure> itself carries the
+    # ltx_figure_panel class despite having its own number and direct
+    # figcaption (panel detection must not key off that class). Figure 4 is
+    # a *real* nested subfigure group: an outer numbered <figure id="S4.F4">
+    # wraps two inner <figure class="ltx_figure_panel"> children with their
+    # own un-numbered "(a)"/"(b)" <figcaption>s — only the outer "Figure 4"
+    # caption must produce an anchor, the panels' (a)/(b) captions must not.
+    anchors = anchors_from_html(HTML_2504)
+    assert anchors == [
+        "## §1 Introduction",
+        "## §2 Proposed Methods",
+        "## §3 Experimental Setup",
+        "## §4 Evaluation Results, Analysis and Discussion",
+        "- Fig. 1 — Illustration of memory importance in AI agents.",
+        "- Fig. 4 — Latency Analysis of Different Memory Approaches.",
+        "- Tab. 1 — Performance comparison of memory-enabled systems "
+        "across different question types in the LOCOMO dataset.",
+    ]
+    assert not any("(a)" in a or "(b)" in a for a in anchors)
+
+
+def test_anchors_from_html_2504_table_math_annotation_not_doubled():
+    # Table 1's caption has an inline <math alttext="\uparrow"> with a
+    # nested <annotation> duplicating the alttext as text; _strip_tags'
+    # MathML dedup must still apply when text is collected through the
+    # tag-aware walker instead of a flat regex match.
+    anchors = anchors_from_html(HTML_2504)
+    tab1 = next(a for a in anchors if a.startswith("- Tab. 1 —"))
+    assert "annotation" not in tab1
+    assert "uparrow" not in tab1
 
 
 def test_pdf_fallback():

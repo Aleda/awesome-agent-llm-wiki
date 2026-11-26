@@ -1,0 +1,68 @@
+<!-- Trimmed, hand-extracted snippet of real markup from
+     https://arxiv.org/html/2502.12110 (A-MEM; fetched 2026-11-27), covering
+     real-world variants missed by the pre-task-23_5 regex parser:
+     1. Section tag spans use "1 " (no period) — fine for the old parser —
+        but the Methodolodgy section's number 3 is followed by a
+        subsection 3.1 to exercise multi-level numbering alongside the new
+        figure/table cases below.
+     2. Figure/table captions nest the number inside its own
+        <span id="..." class="ltx_text" style="font-size:90%;">Figure 1</span>
+        *inside* the outer <span class="ltx_tag ltx_tag_figure">...</span>,
+        with the ":" living in the outer span's own trailing text after
+        the nested span closes — not, as the old
+        FIGURE_CAPTION_HTML_RE/TABLE_CAPTION_HTML_RE regexes required, as
+        a single flat "Figure 4: " text run with no nested tag at all.
+        Hence "ALL figure AND table captions missed" in the real run.
+     3. Figure 1's caption is the *direct* figcaption of an outer
+        <figure id="S1.F1"> that also contains two nested subfigure
+        <div class="ltx_figure_panel">s with their own un-numbered
+        "(a)"/"(b)" captions-as-<p> (not <figcaption>, so they were never
+        anchor candidates in the first place) — kept to exercise that the
+        walker finds the *outer* figcaption even though panel-like divs
+        sit between the opening <figure> tag and it. -->
+<!DOCTYPE html>
+<html>
+<head><title>A-Mem: Agentic Memory for LLM Agents</title></head>
+<body>
+<article class="ltx_document">
+<h1 class="ltx_title ltx_title_document">A-Mem: Agentic Memory for LLM Agents</h1>
+
+<section id="S1" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">1 </span>Introduction</h2>
+<p class="ltx_p">Traditional memory systems require predefined memory access patterns.</p>
+
+<figure id="S1.F1" class="ltx_figure">
+<div class="ltx_flex_figure">
+<div class="ltx_flex_cell ltx_flex_size_2">
+<div id="S1.F1.3" class="ltx_block ltx_figure_panel ltx_minipage ltx_align_top" style="width:138.0pt;"><img src="2502.12110v11/intro-a.png" id="S1.F1.g1" class="ltx_graphics ltx_centering ltx_img_landscape" style="aspect-ratio:191/55;" width="191" height="55" alt="Refer to caption">
+<p id="S1.F1.3.1" class="ltx_p ltx_align_center"><span id="S1.F1.3.1.1" class="ltx_text ltx_font_bold">(a)</span> Traditional memory system.</p>
+</div></div><div class="ltx_flex_cell ltx_flex_size_2">
+<div id="S1.F1.4" class="ltx_block ltx_figure_panel ltx_minipage ltx_align_top" style="width:172.5pt;"><img src="2502.12110v11/intro-b.png" id="S1.F1.g2" class="ltx_graphics ltx_centering ltx_img_landscape" style="aspect-ratio:238/56;" width="238" height="56" alt="Refer to caption">
+<p id="S1.F1.4.1" class="ltx_p ltx_align_center"><span id="S1.F1.4.1.1" class="ltx_text ltx_font_bold">(b)</span> Our proposed agentic memory.</p>
+</div></div></div>
+<figcaption class="ltx_caption"><span class="ltx_tag ltx_tag_figure"><span id="S1.F1.6" class="ltx_text" style="font-size:90%;">Figure 1</span>: </span><span id="S1.F1.7" class="ltx_text" style="font-size:90%;">Traditional memory systems require predefined memory access patterns specified in the workflow, limiting their adaptability to diverse scenarios. Contrastly, our A-Mem enhances the flexibility of LLM agents by enabling dynamic memory operations.</span></figcaption>
+</figure>
+</section>
+
+<section id="S3" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">3 </span>Methodolodgy</h2>
+<section id="S3.SS1" class="ltx_subsection">
+<h3 class="ltx_title ltx_title_subsection"><span class="ltx_tag ltx_tag_subsection">3.1 </span>Note Construction</h3>
+<p class="ltx_p">Building upon the Zettelkasten method's principles of atomic note-taking and flexible organization.</p>
+</section>
+</section>
+
+<section id="S4" class="ltx_section">
+<h2 class="ltx_title ltx_title_section"><span class="ltx_tag ltx_tag_section">4 </span>Experiment</h2>
+
+<figure id="S4.T1" class="ltx_table">
+<figcaption class="ltx_caption ltx_centering"><span class="ltx_tag ltx_tag_table"><span id="S4.T1.4" class="ltx_text" style="font-size:90%;">Table 1</span>: </span><span id="S4.T1.5" class="ltx_text" style="font-size:90%;">
+Experimental results on LoCoMo dataset of QA tasks across five categories (Multi Hop, Temporal, Open Domain, Single Hop, and Adversial) using different methods. The best performance is marked in bold.
+</span></figcaption>
+</figure>
+</section>
+
+</article>
+</body>
+</html>
+</content>
