@@ -27,6 +27,7 @@ by:
 relations:
   - { concept: frequent-context-compaction, rel: proposes, note: 把压缩阈值压到 16K–48K、极端时每个动作后压缩一次，配合按需读取长输入，长程和长输入任务的准确率基本保持 }
   - { concept: semantic-state-space-model, rel: proposes, note: 设想把单动作压缩后训练进模型，每轮读写一段自然语言状态，代替累积完整对话历史 }
+  - { concept: interleaved-reasoning-acting, rel: applies, note: 两种基础 harness 都是极简 ReAct 循环，每轮发一个 Bash 动作，动作和结果逐条追加进对话 }
 ---
 
 ## 新认知

@@ -1,0 +1,17 @@
+id: '2210.03629'
+title: 'ReAct: Synergizing Reasoning and Acting in Language Models'
+authors:
+- Shunyu Yao
+- Jeffrey Zhao
+- Dian Yu
+- Nan Du
+- Izhak Shafran
+- Karthik Narasimhan
+- Yuan Cao
+published: '2022-10-06T01:00:32Z'
+updated: '2023-03-10T01:00:17Z'
+abs_url: https://arxiv.org/abs/2210.03629v3
+pdf_url: https://arxiv.org/pdf/2210.03629v3
+primary_category: cs.CL
+comment: 'v3 is the ICLR camera ready version with some typos fixed. Project site
+  with code: https://react-lm.github.io'

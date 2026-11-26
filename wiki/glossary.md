@@ -17,6 +17,10 @@ type: raw
 
 Artificial Analysis Long Context Reasoning，Artificial Analysis 发布的长上下文推理 benchmark：100 道人工编写的题目，每题要跨一组平均约 100K token 的真实文档综合证据、多步推理作答。
 
+## ALFWorld
+
+Shridhar 等 2020 年发布的文本游戏环境，与具身 benchmark ALFRED 对齐：agent 用文本动作在模拟的家庭环境里移动和操作物品，完成 6 类高层目标（如在台灯下查看纸张）。ReAct 论文在其中 134 个未见过的游戏上评测成功率。
+
 ## Amdahl's law
 
 Amdahl 定律：系统中只有一部分被加速时，整体加速受未被加速部分所占的比例限制。Anthropic 2026-09 的 blog 用它说明 AI 研发局部加速后瓶颈会转移到人工审查等环节。
@@ -57,6 +61,10 @@ CLM 论文（arXiv 2609.37725）提出的上下文管理诊断 benchmark，含 N
 
 评测 agent 计算复现能力的 benchmark（Computational Reproducibility Agent Benchmark）：给定已发表论文附带的代码和数据，agent 要配好环境、跑通代码，并回答关于运行结果的问题。
 
+## CoT
+
+chain-of-thought prompting，Wei 等 2022 年提出的提示方法：让模型在给出答案前先写出中间推理步骤。CoT-SC 是它的 self-consistency 变体，采样多条推理链后取多数答案。
+
 ## DGX Spark
 
 NVIDIA 的桌面级 AI 计算机，128GB 统一内存。You don't need long context 论文（arXiv 2611.05306）用它测本地部署时生成延迟和显存随上下文长度的变化。
@@ -77,6 +85,10 @@ Suzgun 等 2025 年提出的测试时学习方法：推理中维护一份外部 
 
 You don't need long context 论文（arXiv 2611.05306）定义的成本估算：以闭源模型的标价为完整窗口下的价格，按实测吞吐比把价格线性降到 16K 窗口时的约 20%，再按新输入、缓存输入和输出 token 分别计价。它假设服务方按窗口大小部署和定价，不是现行实际价格。
 
+## FEVER
+
+Thorne 等 2018 年发布的事实核验 benchmark：每条陈述按 Wikipedia 中能否找到依据，标为 SUPPORTS、REFUTES 或 NOT ENOUGH INFO。
+
 ## FiNER
 
 Loukas 等 2022 年发布的金融命名实体识别 benchmark：给 XBRL 财务文档里的 token 标注 139 种细粒度实体类型之一。ACE 论文用它和数值推理任务 Formula 测金融领域的上下文适应。
@@ -89,6 +101,10 @@ Google 发布的多跳问答 benchmark，824 道题，每题要综合 2 到 15 �
 
 Genetic-Pareto，Agrawal 等 2025 年提出的提示词优化方法：收集执行轨迹，用自然语言反思诊断错误、提出新的完整提示词，再用遗传式 Pareto 搜索保留表现好的候选。ACE 论文的离线基线之一。
 
+## GPT-J
+
+Wang 和 Komatsuzaki 2021 年发布的开源自回归语言模型，Toolformer 论文记为 6.7B 参数，并以它为底座模型。
+
 ## GRPO
 
 Group Relative Policy Optimization，DeepSeekMath（2024）提出的强化学习算法。对同一个提示采样一组回答，用组内奖励的相对高低估计优势，因此不需要单独训练价值模型（critic）。
@@ -100,6 +116,22 @@ OpenAI 2021 年发布的小学数学应用题数据集，约 8.5K 道题，答�
 ## Heilbronn triangle problem
 
 Heilbronn 三角形问题：在单位区域内放置 n 个点，使任意三点构成的三角形中面积最小的那个尽可能大。AlphaEvolve 和 OpenEvolve 把它用作数学优化测试题。
+
+## HotpotQA
+
+Yang 等 2018 年发布的多跳问答 benchmark，回答每个问题要综合两段或更多 Wikipedia 段落。ReAct 论文只给模型问题、不给支撑段落，指标为 exact match（EM）。
+
+## HumanEvalFix
+
+OctoPack 工作发布的短代码修复 benchmark：要求模型修复带 bug 的函数，用单元测试判定，测试集 164 题，覆盖 Python、JavaScript、Java、Go、C++、Rust。
+
+## InterCode
+
+Yang 等 2023 年发布的交互式编程框架，把编程任务表述为 agent 在 Docker 容器里执行命令、读取执行反馈的循环；其中 InterCode-Bash 环境即 SWE-agent 论文的 Shell-only 基线。
+
+## LAMA
+
+Petroni 等 2019 年发布的事实知识探测 benchmark：把事实写成缺一个词的陈述句让模型补全。Toolformer 论文用其中的 SQuAD、Google-RE、T-REx 子集。
 
 ## LoCoMo
 
@@ -181,6 +213,14 @@ CLM 论文自建的多仓库优化任务：六个 agent 各负责一个仓库（
 
 Princeton 团队 2023 年发布的软件工程 benchmark，任务取自真实 GitHub 仓库的 issue：模型要生成代码补丁，用当初修复该 issue 的 PR 中的测试判定是否解决。SWE-bench Verified 是 OpenAI 于 2024 年发布的 500 题子集，题目经过人工核验。
 
+## SWE-bench Lite
+
+SWE-bench 的 300 题标准子集，只收自包含的功能性 bug 修复。SWE-agent 论文在它上面做消融和分析。
+
+## TALM
+
+Tool Augmented Language Models，Parisi 等 2022 年的工作，用自监督目标迭代地教模型调用计算器和搜索引擎，只在针对下游任务微调的设置下验证。Toolformer 论文称它是最接近的前作。
+
 ## TBLite
 
 OpenThoughts-TBLite，由 OpenThoughts-Agent 团队发布的终端 agent benchmark，定位是便于快速迭代的高信号任务集。CLM 论文按 TerminalBench 2.1 的方式设置轮数、时限和评分。
@@ -188,6 +228,10 @@ OpenThoughts-TBLite，由 OpenThoughts-Agent 团队发布的终端 agent benchma
 ## TerminalBench
 
 评测 agent 在终端环境中完成任务的 benchmark，也写作 Terminal-Bench。每个任务在容器里运行，agent 通过命令行操作，由任务附带的测试脚本判定是否完成。
+
+## WebShop
+
+Yao 等 2022 年发布的模拟网购环境，含 118 万件真实商品和 1.2 万条人写的购物指令，agent 通过搜索、点选商品和选项完成购买，按平均得分（满足的属性比例）和成功率评测。
 
 ## Zep
 

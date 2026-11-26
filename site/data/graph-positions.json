@@ -3,6 +3,10 @@
     143,
     966
   ],
+  "wiki/concepts/agent-computer-interface": [
+    223,
+    130
+  ],
   "wiki/concepts/ai-rd-uplift-measurement": [
     160,
     795
@@ -12,52 +16,60 @@
     1205
   ],
   "wiki/concepts/frequent-context-compaction": [
-    81,
+    82,
     -753
   ],
   "wiki/concepts/human-bottleneck-in-ai-rd": [
     260,
     994
   ],
+  "wiki/concepts/interleaved-reasoning-acting": [
+    263,
+    -47
+  ],
   "wiki/concepts/long-context-position-bias": [
-    155,
-    -730
+    147,
+    -722
   ],
   "wiki/concepts/memory-consolidation": [
     830,
     196
   ],
   "wiki/concepts/memory-notes": [
-    15,
-    -340
+    13,
+    -339
   ],
   "wiki/concepts/memory-stream-reflection": [
-    703,
-    -186
+    689,
+    -166
   ],
   "wiki/concepts/model-managed-context": [
-    468,
-    -526
+    467,
+    -525
   ],
   "wiki/concepts/prompt-compression": [
-    -254,
-    -953
+    -253,
+    -945
+  ],
+  "wiki/concepts/self-supervised-tool-learning": [
+    -85,
+    -253
   ],
   "wiki/concepts/semantic-state-space-model": [
-    181,
-    -811
+    186,
+    -817
   ],
   "wiki/concepts/streaming-task-evaluation": [
-    -877,
-    230
+    -874,
+    229
   ],
   "wiki/concepts/success-gated-efficiency-reward": [
-    223,
-    -865
+    227,
+    -872
   ],
   "wiki/concepts/suffix-cache-reuse": [
-    16,
-    -738
+    -33,
+    -725
   ],
   "wiki/concepts/verifiable-coordinated-slowdown": [
     107,
@@ -68,8 +80,8 @@
     931
   ],
   "wiki/entities/google": [
-    499,
-    -218
+    408,
+    -211
   ],
   "wiki/entities/jack-clark": [
     80,
@@ -80,48 +92,64 @@
     -10
   ],
   "wiki/entities/meta": [
-    -156,
-    -715
+    -72,
+    -488
   ],
   "wiki/entities/microsoft": [
-    -57,
-    -885
+    -55,
+    -883
   ],
   "wiki/entities/nvidia": [
-    -7,
-    -655
+    0,
+    -615
+  ],
+  "wiki/entities/princeton": [
+    243,
+    -94
   ],
   "wiki/entities/sambanova": [
-    212,
-    -306
+    216,
+    -298
   ],
   "wiki/entities/stanford": [
-    336,
-    -417
+    323,
+    -398
   ],
   "wiki/entities/uc-berkeley": [
-    255,
-    -471
+    254,
+    -457
   ],
   "wiki/entities/uw": [
-    -171,
-    -675
+    -138,
+    -555
+  ],
+  "wiki/papers/202210-react": [
+    329,
+    -146
+  ],
+  "wiki/papers/202302-toolformer": [
+    -87,
+    -385
   ],
   "wiki/papers/202304-generative-agents": [
-    514,
-    -306
+    490,
+    -274
   ],
   "wiki/papers/202307-lost-in-the-middle": [
-    249,
-    -565
+    238,
+    -551
   ],
   "wiki/papers/202310-llmlingua": [
-    -136,
+    -133,
     -929
   ],
   "wiki/papers/202310-memgpt": [
-    347,
-    -493
+    346,
+    -484
+  ],
+  "wiki/papers/202405-swe-agent": [
+    207,
+    6
   ],
   "wiki/papers/202502-a-mem": [
     919,
@@ -132,19 +160,19 @@
     79
   ],
   "wiki/papers/202510-ace": [
-    195,
-    -394
+    188,
+    -384
   ],
   "wiki/papers/202609-context-language-models": [
-    -81,
-    -665
+    -54,
+    -589
   ],
   "wiki/papers/202611-you-dont-need-long-context": [
-    81,
-    -633
+    87,
+    -634
   ],
   "wiki/podcasts/20261108-crossing-gu-yu": [
-    -995,
+    -992,
     212
   ],
   "wiki/topics/agent": [
@@ -168,7 +196,7 @@
     1000
   ],
   "wiki/videos/20261125-agent-deep-research-clm": [
-    -134,
-    -773
+    -124,
+    -686
   ]
 }

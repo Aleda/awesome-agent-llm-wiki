@@ -41,3 +41,6 @@ type: raw
 2026-11-27 录入素材 · papers/202307-lost-in-the-middle.md、papers/202310-llmlingua.md、papers/202510-ace.md
 2026-11-27 新建 · concepts/long-context-position-bias.md、concepts/prompt-compression.md、entities/microsoft.md、entities/sambanova.md
 2026-11-27 更新 · concepts/model-managed-context.md、concepts/memory-notes.md、papers/202310-memgpt.md、topics/context.md、topics/continual-learning.md、glossary.md、index.md
+2026-11-27 录入素材 · papers/202210-react.md、papers/202302-toolformer.md、papers/202405-swe-agent.md
+2026-11-27 新建 · concepts/interleaved-reasoning-acting.md、concepts/self-supervised-tool-learning.md、concepts/agent-computer-interface.md、entities/princeton.md
+2026-11-27 更新 · concepts/model-managed-context.md、concepts/frequent-context-compaction.md、papers/202510-ace.md、papers/202611-you-dont-need-long-context.md、entities/meta.md、entities/google.md、topics/agent.md、glossary.md、index.md

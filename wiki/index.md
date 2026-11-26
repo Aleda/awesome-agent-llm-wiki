@@ -30,15 +30,21 @@ type: raw
 - [写入时记忆整合](concepts/memory-consolidation.md) — 新信息写入时取出相似旧记忆，由 LLM 决定新增、改写、合并或删除，让记忆库保持一致
 - [长上下文位置偏差](concepts/long-context-position-bias.md) — 模型用长输入里的信息时，开头和结尾处最好、中间最差，准确率随位置呈 U 形
 - [提示词压缩](concepts/prompt-compression.md) — 在不改目标模型的前提下删减提示词里的 token，只保留目标模型完成任务需要的部分
+- [推理与行动交替](concepts/interleaved-reasoning-acting.md) — agent 在同一条轨迹里交替写自然语言推理和执行环境动作，推理指导下一步动作，动作结果再供推理使用
+- [自监督工具使用学习](concepts/self-supervised-tool-learning.md) — 模型自己在无标注文本里插入候选工具调用，只保留能降低后续 token 损失的调用，再用这些数据微调自己
+- [面向 agent 的计算机接口](concepts/agent-computer-interface.md) — 把 LM agent 当作软件的一类新用户，按模型的能力和局限设计它能用的命令、看到的反馈和历史整理方式
 
 ## 论文
 
+- [ReAct](papers/202210-react.md) — 让 LLM 在一条轨迹里交替写推理和执行动作，只靠少量示例提示就在 ALFWorld、WebShop 上超过模仿学习
+- [Toolformer](papers/202302-toolformer.md) — 让模型自己在语料里插入 API 调用，只留能降低后续 token 损失的调用再微调，6.7B 模型零样本学会用五种工具
 - [Generative Agents](papers/202304-generative-agents.md) — 用记忆流、反思和规划驱动 25 个 agent 在沙盒小镇里生活，行为比消融版本和众包扮演更可信
 - [Lost in the Middle](papers/202307-lost-in-the-middle.md) — 相关信息放在长输入中间时模型表现最差，呈 U 形曲线；扩了窗口的版本并不更会用上下文
 - [LLMLingua](papers/202310-llmlingua.md) — 用小模型的困惑度由粗到细删减提示词，GSM8K 上压缩 20 倍只掉 1.5 个点，适用于黑盒 API
 - [MemGPT](papers/202310-memgpt.md) — 借操作系统的虚拟内存，让模型用函数调用在上下文和外部存储之间换入换出，突破固定窗口
 - [A-MEM](papers/202502-a-mem.md) — 仿 Zettelkasten 把每条记忆写成带标签的笔记，写入时自动建链并改写相关旧笔记
 - [Mem0](papers/202504-mem0.md) — 从每轮对话抽取事实，由 LLM 对相似旧记忆选择增删改，LOCOMO 上接近全文效果且延迟低得多
+- [SWE-agent](papers/202405-swe-agent.md) — 把 LM agent 当作新一类用户，为它设计搜索、看文件和带 linter 的编辑命令，同一模型解决率明显提高
 - [ACE](papers/202510-ace.md) — 把上下文当作逐条积累的 playbook，只做增量更新避免整段重写塌缩，AppWorld 和金融任务上超过提示优化基线
 - [Context Language Models](papers/202609-context-language-models.md) — 把实时上下文镜像成文件，让模型用 Bash 自由编辑，长程任务上更准也更省算力
 - [You don't need long context](papers/202611-you-dont-need-long-context.md) — 频繁压缩加按需读取，把上下文压到 16K–48K，长程和长输入任务基本不掉点
@@ -61,9 +67,10 @@ type: raw
 - [Google](entities/google.md) — 美国科技公司，本页同时收录 Google Research 和 Google DeepMind 参与的素材
 - [Jack Clark](entities/jack-clark.md) — Anthropic 联合创始人，长期负责政策工作，撰写 AI 周报 Import AI
 - [Mem0（公司）](entities/mem0.md) — 开发 AI agent 长期记忆层的公司，产品和论文都叫 Mem0
-- [Meta](entities/meta.md) — 美国科技公司，本页同时收录其 Meta Superintelligence Labs 参与的素材
+- [Meta](entities/meta.md) — 美国科技公司，本页同时收录 Meta AI Research 和 MSL 参与的素材
 - [Microsoft](entities/microsoft.md) — 美国科技公司，本页同时收录 Microsoft Research 参与的素材
 - [NVIDIA](entities/nvidia.md) — 美国 GPU 和 AI 计算平台公司，本页同时收录 NVIDIA Research 参与的素材
+- [Princeton University](entities/princeton.md) — 美国普林斯顿大学，位于新泽西州普林斯顿的私立研究型大学
 - [SambaNova Systems](entities/sambanova.md) — 美国 AI 公司，开发 AI 芯片和大模型推理平台
 - [Stanford University](entities/stanford.md) — 美国斯坦福大学，位于加州斯坦福的私立研究型大学
 - [UC Berkeley](entities/uc-berkeley.md) — 美国加州大学伯克利分校，位于加州伯克利的公立研究型大学

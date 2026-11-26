@@ -17,8 +17,9 @@ order: 0
 ### 一次任务之内
 
 - [Context](context.md)：模型在每一步能看到什么，信息超出窗口时如何压缩和取舍。
-- agent 循环：推理与行动交替（ReAct 一类）、工具调用（Toolformer 一类）。
-- harness 设计：agent 与环境交互的接口，如 SWE-agent 的 agent-computer interface。
+- agent 循环：[推理与行动交替](../concepts/interleaved-reasoning-acting.md)，模型在一条轨迹里交替写推理和执行动作，最早来源是 [ReAct](../papers/202210-react.md)。
+- 工具调用的能力从哪里来：[自监督工具使用学习](../concepts/self-supervised-tool-learning.md)，模型自己标注哪里调用工具有用，再训练进权重，见 [Toolformer](../papers/202302-toolformer.md)。
+- harness 设计：[面向 agent 的计算机接口](../concepts/agent-computer-interface.md)，按模型的能力设计它能用的命令和看到的反馈，见 [SWE-agent](../papers/202405-swe-agent.md)。
 
 ### 跨任务
 
@@ -33,8 +34,8 @@ order: 0
 
 ## 关键争论
 
-- harness 做多少、模型做多少：控制流、上下文取舍、何时调用工具，写成外部规则，还是交给模型自己决定。这个问题在 context 和 memory 两个方向里各有一个具体版本。
-- 能力放在哪里：推理时的循环、工具和提示词，与训练进权重，哪一类改进更能迁移到新任务。
-- benchmark 分数能说明多少：同一个模型换 harness、工具或预算，分数差距可能很大，不同报告之间的数字往往不能直接比较。
+- harness 做多少、模型做多少：控制流、上下文取舍、何时调用工具，写成外部规则，还是交给模型自己决定。这个问题在 context 和 memory 两个方向里各有一个具体版本，见[模型自管理上下文](../concepts/model-managed-context.md#设计空间)。SWE-agent 站在 harness 一侧：模型固定，命令、反馈和历史整理都由接口决定，同一个 GPT-4 Turbo 在 SWE-bench Lite 上从直接用 shell 的 11.00% 提到 18.00%（[SWE-agent](../papers/202405-swe-agent.md) Tab. 1）；它把旧观察按固定规则折叠（[SWE-agent](../papers/202405-swe-agent.md) §3¶7），CLM 则把上下文编辑权整个交给模型（[CLM](../papers/202609-context-language-models.md) §4.1¶2）。两篇任务不同，没有直接对照。
+- 能力放在哪里：推理时的循环、工具和提示词，与训练进权重，哪一类改进更能迁移到新任务。三篇早期工作各选一处：ReAct 用少量示例提示冻结的模型（[ReAct](../papers/202210-react.md) §2¶3），但也发现小模型要靠微调才学得会（[ReAct](../papers/202210-react.md) §3.3¶8）；Toolformer 把何时调用工具训练进权重，不改工具（[Toolformer](../papers/202302-toolformer.md) §2¶8）；SWE-agent 不改权重，只改接口（[SWE-agent](../papers/202405-swe-agent.md) §2¶4）。
+- benchmark 分数能说明多少：同一个模型换 harness、工具或预算，分数差距可能很大，不同报告之间的数字往往不能直接比较。SWE-agent 的消融里，只改文件查看器一次显示的行数，解决率就在 12.7% 到 18.0% 之间变化（[SWE-agent](../papers/202405-swe-agent.md) Tab. 3）；Toolformer 的零样本结果用的是宽松口径，如 LAMA 只看前五个词里有没有答案（[Toolformer](../papers/202302-toolformer.md) §4.2.1¶1）。
 
 ## 最近进展
