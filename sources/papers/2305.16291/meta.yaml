@@ -1,0 +1,17 @@
+id: '2305.16291'
+title: 'Voyager: An Open-Ended Embodied Agent with Large Language Models'
+authors:
+- Guanzhi Wang
+- Yuqi Xie
+- Yunfan Jiang
+- Ajay Mandlekar
+- Chaowei Xiao
+- Yuke Zhu
+- Linxi Fan
+- Anima Anandkumar
+published: '2023-05-25T17:46:38Z'
+updated: '2023-10-19T16:27:03Z'
+abs_url: https://arxiv.org/abs/2305.16291v2
+pdf_url: https://arxiv.org/pdf/2305.16291v2
+primary_category: cs.AI
+comment: 'Project website and open-source codebase: https://voyager.minedojo.org/'

@@ -37,7 +37,7 @@ agent 的全部经历按时间顺序记成一条自然语言记录流，每条�
 ## 共识与分歧
 
 - 与[记忆笔记](memory-notes.md)的区别：两者都把经验写成自然语言再读回。反思存的是对人和事的推断（例如"Klaus 专注于研究"），服务于角色行为的可信度（[Generative Agents](../papers/202304-generative-agents.md) §6.1¶1）；记忆笔记存的是跨任务积累的做事规则和教训，目的是让后续任务做得更好。本库因此分开建页。
-- 与 Reflexion 的区别：Reflexion 把任务失败的原因写成文字，供同一任务的下一次尝试参考；这里的反思不针对任务成败，按重要性累计周期性触发，概括的是经历本身。Reflexion 的素材待录入。
+- 与 Reflexion 的区别：Reflexion 在任务失败后把原因写成文字，供同一任务的下一次尝试参考（[Reflexion](../papers/202303-reflexion.md) §3¶4）；这里的反思不针对任务成败，按重要性累计周期性触发（[Generative Agents](../papers/202304-generative-agents.md) §4.2¶2），概括的是经历本身。本库把前者建为[语言反馈强化](verbal-reinforcement.md)。
 - 截至 2026-11，本库只有 Generative Agents 一个来源。
 
 ## 开放问题

@@ -44,3 +44,6 @@ type: raw
 2026-11-27 录入素材 · papers/202210-react.md、papers/202302-toolformer.md、papers/202405-swe-agent.md
 2026-11-27 新建 · concepts/interleaved-reasoning-acting.md、concepts/self-supervised-tool-learning.md、concepts/agent-computer-interface.md、entities/princeton.md
 2026-11-27 更新 · concepts/model-managed-context.md、concepts/frequent-context-compaction.md、papers/202510-ace.md、papers/202611-you-dont-need-long-context.md、entities/meta.md、entities/google.md、topics/agent.md、glossary.md、index.md
+2026-11-27 录入素材 · papers/202303-reflexion.md、papers/202305-voyager.md
+2026-11-27 新建 · concepts/verbal-reinforcement.md、concepts/skill-library.md、entities/northeastern.md、entities/mit.md、entities/caltech.md、entities/ut-austin.md、entities/uw-madison.md
+2026-11-27 更新 · concepts/memory-notes.md、concepts/memory-stream-reflection.md、papers/202210-react.md、papers/202304-generative-agents.md、papers/202510-ace.md、topics/continual-learning.md、glossary.md、index.md

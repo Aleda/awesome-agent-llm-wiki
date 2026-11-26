@@ -33,6 +33,10 @@ NeoCognition 的 continual learning benchmark（截至 2026-11 未公开）：�
 
 Trivedi 等 2024 年发布的 agent benchmark：在模拟的邮件、文件系统等日常应用和 API 环境里，让 agent 写代码调用 API 完成任务，分 test-normal 和 test-challenge 两档难度。指标为 TGC（Task Goal Completion，单个任务完成率）和 SGC（Scenario Goal Completion，同一场景下全部任务都完成的比例），有公开排行榜。
 
+## AutoGPT
+
+2023 年流行的开源 agent 工具：把高层目标分解成多个子目标，再用 ReAct 式循环逐个执行。Voyager 论文把它改写成 Minecraft 里的基线。
+
 ## BBH
 
 BIG-Bench Hard，从 BIG-Bench 中挑出的 23 个较难子任务、约 6,500 道题，常用于评测思维链提示下的语言和符号推理。
@@ -121,6 +125,10 @@ Heilbronn 三角形问题：在单位区域内放置 n 个点，使任意三点�
 
 Yang 等 2018 年发布的多跳问答 benchmark，回答每个问题要综合两段或更多 Wikipedia 段落。ReAct 论文只给模型问题、不给支撑段落，指标为 exact match（EM）。
 
+## HumanEval
+
+OpenAI 2021 年发布的代码生成 benchmark：164 道 Python 函数题，按函数签名和文档字符串写出函数体，用隐藏单元测试判定，常用指标是 pass@1。
+
 ## HumanEvalFix
 
 OctoPack 工作发布的短代码修复 benchmark：要求模型修复带 bug 的函数，用单元测试判定，测试集 164 题，覆盖 Python、JavaScript、Java、Go、C++、Rust。
@@ -133,6 +141,10 @@ Yang 等 2023 年发布的交互式编程框架，把编程任务表述为 agent
 
 Petroni 等 2019 年发布的事实知识探测 benchmark：把事实写成缺一个词的陈述句让模型补全。Toolformer 论文用其中的 SQuAD、Google-RE、T-REx 子集。
 
+## LeetcodeHardGym
+
+Reflexion 论文发布的代码生成环境：40 道 LeetCode 困难题，均在 2022-10-08 之后发布，覆盖 19 种编程语言。
+
 ## LoCoMo
 
 评测长期对话记忆的数据集（Maharana 等，2024），两人跨多次会话聊日常，每段对话配一组问答，按单跳、多跳、时间、开放域、对抗分类；也写作 LOCOMO。A-MEM 论文说对话平均约 9K token，Mem0 论文说约 26000 token。
@@ -141,6 +153,10 @@ Petroni 等 2019 年发布的事实知识探测 benchmark：把事实写成缺�
 
 多文档长上下文问答 benchmark，1,600 道题，一道题通常依赖多份完整的财报、法律案例或论文，中英文都有，证据有意分散在多份文档里。
 
+## MBPP
+
+Mostly Basic Python Problems，Google 2021 年发布的入门级 Python 编程 benchmark，按自然语言描述写函数，用单元测试判定。
+
 ## METR time horizon
 
 METR 提出的能力度量：在一组任务上，模型能以 50% 可靠度完成的任务，对应熟练的人需要多长时间。Anthropic 2026-09 的 blog 引述这一时长约每四个月翻一番。
@@ -148,6 +164,14 @@ METR 提出的能力度量：在一组任务上，模型能以 50% 可靠度完�
 ## Mind2Web
 
 OSU NLP 组 2023 年发布的 web agent benchmark，任务取自真实网站，要求 agent 按自然语言指令完成网页操作。Online-Mind2Web 是它在真实在线网站上评测的变体。
+
+## MineDojo
+
+NVIDIA 等 2022 年发布的开源 Minecraft AI 框架，含模拟环境和从 YouTube、Wiki、Reddit 收集的知识库。Voyager 的实验环境建在它之上。
+
+## Mineflayer
+
+控制 Minecraft 机器人的开源 JavaScript 库，提供移动、挖掘、合成等高层 API。Voyager 让 GPT-4 写调用它的代码来行动。
 
 ## mini-swe-agent
 

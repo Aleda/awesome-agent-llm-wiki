@@ -33,12 +33,16 @@ type: raw
 - [推理与行动交替](concepts/interleaved-reasoning-acting.md) — agent 在同一条轨迹里交替写自然语言推理和执行环境动作，推理指导下一步动作，动作结果再供推理使用
 - [自监督工具使用学习](concepts/self-supervised-tool-learning.md) — 模型自己在无标注文本里插入候选工具调用，只保留能降低后续 token 损失的调用，再用这些数据微调自己
 - [面向 agent 的计算机接口](concepts/agent-computer-interface.md) — 把 LM agent 当作软件的一类新用户，按模型的能力和局限设计它能用的命令、看到的反馈和历史整理方式
+- [语言反馈强化](concepts/verbal-reinforcement.md) — 任务失败后让 LLM 把成败信号写成文字反思，放进同一任务下一次尝试的上下文，不改权重地改进做法
+- [技能库](concepts/skill-library.md) — agent 把验证成功的行为写成可执行代码存起来，按描述检索、组合成更复杂的技能，供之后的任务复用
 
 ## 论文
 
 - [ReAct](papers/202210-react.md) — 让 LLM 在一条轨迹里交替写推理和执行动作，只靠少量示例提示就在 ALFWorld、WebShop 上超过模仿学习
 - [Toolformer](papers/202302-toolformer.md) — 让模型自己在语料里插入 API 调用，只留能降低后续 token 损失的调用再微调，6.7B 模型零样本学会用五种工具
+- [Reflexion](papers/202303-reflexion.md) — 把失败反馈写成文字反思存进记忆，同一任务下一次尝试时读回，不改权重，HumanEval pass@1 达 91%
 - [Generative Agents](papers/202304-generative-agents.md) — 用记忆流、反思和规划驱动 25 个 agent 在沙盒小镇里生活，行为比消融版本和众包扮演更可信
+- [Voyager](papers/202305-voyager.md) — Minecraft 里由 GPT-4 自定课程，把验证过的代码存进技能库并组合复用，不改权重持续学会新技能
 - [Lost in the Middle](papers/202307-lost-in-the-middle.md) — 相关信息放在长输入中间时模型表现最差，呈 U 形曲线；扩了窗口的版本并不更会用上下文
 - [LLMLingua](papers/202310-llmlingua.md) — 用小模型的困惑度由粗到细删减提示词，GSM8K 上压缩 20 倍只掉 1.5 个点，适用于黑盒 API
 - [MemGPT](papers/202310-memgpt.md) — 借操作系统的虚拟内存，让模型用函数调用在上下文和外部存储之间换入换出，突破固定窗口
@@ -64,14 +68,19 @@ type: raw
 ## 实体
 
 - [Anthropic](entities/anthropic.md) — 美国 AI 公司，开发 Claude 系列模型，本页同时收录 The Anthropic Institute 的素材
+- [California Institute of Technology](entities/caltech.md) — 美国加州理工学院，位于加州帕萨迪纳的私立研究型大学
 - [Google](entities/google.md) — 美国科技公司，本页同时收录 Google Research 和 Google DeepMind 参与的素材
 - [Jack Clark](entities/jack-clark.md) — Anthropic 联合创始人，长期负责政策工作，撰写 AI 周报 Import AI
+- [Massachusetts Institute of Technology](entities/mit.md) — 美国麻省理工学院，位于马萨诸塞州剑桥的私立研究型大学
 - [Mem0（公司）](entities/mem0.md) — 开发 AI agent 长期记忆层的公司，产品和论文都叫 Mem0
 - [Meta](entities/meta.md) — 美国科技公司，本页同时收录 Meta AI Research 和 MSL 参与的素材
 - [Microsoft](entities/microsoft.md) — 美国科技公司，本页同时收录 Microsoft Research 参与的素材
+- [Northeastern University](entities/northeastern.md) — 美国东北大学，位于马萨诸塞州波士顿的私立研究型大学
 - [NVIDIA](entities/nvidia.md) — 美国 GPU 和 AI 计算平台公司，本页同时收录 NVIDIA Research 参与的素材
 - [Princeton University](entities/princeton.md) — 美国普林斯顿大学，位于新泽西州普林斯顿的私立研究型大学
 - [SambaNova Systems](entities/sambanova.md) — 美国 AI 公司，开发 AI 芯片和大模型推理平台
 - [Stanford University](entities/stanford.md) — 美国斯坦福大学，位于加州斯坦福的私立研究型大学
+- [The University of Texas at Austin](entities/ut-austin.md) — 美国得克萨斯大学奥斯汀分校，位于得州奥斯汀的公立研究型大学
 - [UC Berkeley](entities/uc-berkeley.md) — 美国加州大学伯克利分校，位于加州伯克利的公立研究型大学
 - [University of Washington](entities/uw.md) — 美国华盛顿大学，位于西雅图的公立研究型大学
+- [University of Wisconsin–Madison](entities/uw-madison.md) — 美国威斯康星大学麦迪逊分校，位于威斯康星州麦迪逊的公立研究型大学

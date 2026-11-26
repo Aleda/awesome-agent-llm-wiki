@@ -87,4 +87,5 @@ LLM 能在单个时间点生成可信的人类行为，但要长时间保持连�
 
 - 与 [MemGPT](./202310-memgpt.md)：MemGPT 在相关工作里把本文概括为给 LLM 加记忆并用 LLM 做规划（[MemGPT](./202310-memgpt.md) §4¶3）。两篇都把记忆放在上下文之外、按需取回；区别在谁决定取什么。本文由固定打分函数每步取回（§4.1¶7），MemGPT 让模型用函数调用自己检索和改写（[MemGPT](./202310-memgpt.md) §2.3¶1）。本库把这个差别放在[模型自管理上下文](../concepts/model-managed-context.md#设计空间)里比较。
 - 与 [A-MEM](./202502-a-mem.md)、[Mem0](./202504-mem0.md)：三篇都由 LLM 在写入时加工记忆。本文只追加新条目（打重要性分、写反思），A-MEM 会改写近邻笔记的描述和标签（[A-MEM](./202502-a-mem.md) §3.3¶1），Mem0 会删除被新信息否定的事实（[Mem0](./202504-mem0.md) §2.1¶3），见[写入时记忆整合](../concepts/memory-consolidation.md#设计空间)。
-- 与 Reflexion：两者都把经验提炼成文字再读回。Reflexion 反思的是任务失败的原因，供下一次尝试使用；本文反思的是对人和事的推断，供维持角色一致。Reflexion 的素材待录入。
+- 与 [Reflexion](./202303-reflexion.md)：两者都把经验提炼成文字再读回。Reflexion 在任务失败后反思原因，供同一任务的下一次尝试使用（[Reflexion](./202303-reflexion.md) §3¶4）；本文按重要性累计周期性反思（§4.2¶2），写的是对人和事的推断，供维持角色一致，见[语言反馈强化](../concepts/verbal-reinforcement.md#共识与分歧)。
+- 与 [Voyager](./202305-voyager.md)：Voyager 认为本文存储和检索经历用于规划，但 agent 的动作不可执行，也没有技能库（[Voyager](./202305-voyager.md) §5¶2），见[技能库](../concepts/skill-library.md)。
