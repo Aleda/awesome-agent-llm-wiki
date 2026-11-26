@@ -3,7 +3,7 @@ title: 推理与行动交替
 type: concept
 summary: agent 在同一条轨迹里交替写自然语言推理和执行环境动作，推理指导下一步动作，动作结果再供推理使用
 topics: [agent]
-aliases: [interleaved reasoning and acting, reasoning and acting, ReAct loop, ReAct 循环, ReAct-style agent loop, thought-action-observation loop, 思考-行动-观察循环]
+aliases: [interleaved reasoning and acting, ReAct loop, ReAct 循环, ReAct-style agent loop, thought-action-observation loop, 思考-行动-观察循环]
 added: 2026-11-27
 status: established
 relations:
@@ -38,9 +38,9 @@ relations:
 ## 共识与分歧
 
 - 交替在长程决策任务上收益最明显，在知识问答上不一定。ReAct 在 ALFWorld 和 WebShop 上明显超过只行动的 Act（[ReAct](../papers/202210-react.md) Tab. 3、[ReAct](../papers/202210-react.md) Tab. 4）；HotpotQA 上单用 ReAct 是 27.4，低于 CoT 的 29.4（[ReAct](../papers/202210-react.md) Tab. 1）。作者把这归因于事实性和灵活性的取舍，所以提出与 CoT-SC 组合（[ReAct](../papers/202210-react.md) §3.3¶5）。
-- 循环本身不决定上限。SWE-agent 和它的 Shell-only 基线用的都是同一种 thought 加命令的循环，同一个 GPT-4 Turbo 在 SWE-bench Lite 上的解决率是 18.00% 和 11.00%（[SWE-agent](../papers/202405-swe-agent.md) Tab. 1），差别来自 agent 能用的命令和看到的反馈。
+- 循环本身不决定上限。SWE-agent 与它的 Shell-only 基线都让同一个 GPT-4 Turbo 在 Linux 环境里多轮交互，SWE-bench Lite 上的解决率是 18.00% 和 11.00%（[SWE-agent](../papers/202405-swe-agent.md) Tab. 1），差别在 agent 能用的命令和看到的反馈。
 - 提示还是训练：ReAct 的主实验只用少量示例提示（[ReAct](../papers/202210-react.md) §2¶3），但作者也报告 8B/62B 模型靠提示学不会交替，用 3,000 条轨迹微调后变成四种方法里最好的（[ReAct](../papers/202210-react.md) §3.3¶8）。Toolformer 作者认为基于 few-shot 提示的工具使用只适用于事先知道要用哪个工具的特定任务（[Toolformer](../papers/202302-toolformer.md) §6¶2）。
-- 到 2026 年，交替循环已经是 agent 论文的默认 harness：NVIDIA 论文的两种 harness 都是极简 ReAct 循环（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §2.4），ACE 在 AppWorld 上以 ReAct 为基线报告提升（[ACE](../papers/202510-ace.md) §4.3¶2）。
+- 本库 2025–2026 年的两篇素材都以交替循环为基础 harness：NVIDIA 论文的两种 harness 都是极简 ReAct 循环（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) §2.4），ACE 在 AppWorld 上以 ReAct 为基线报告提升（[ACE](../papers/202510-ace.md) §4.3¶2）。
 
 ## 开放问题
 

@@ -72,3 +72,4 @@
 - §7¶1: "Toolformer currently does not take into account the tool-dependent, computational cost incurred from making an API call"
 - §7¶1: "processing more than a million documents results in only a few thousand examples of useful calls to the calculator API"
 - §7¶1: "One such limitation is the inability of Toolformer to use tools in a chain"
+- §4.2¶1: "where models are provided with dataset-specific examples of how a tool can be used to solve a concrete task"

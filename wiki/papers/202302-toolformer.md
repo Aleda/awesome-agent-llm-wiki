@@ -8,7 +8,7 @@ added: 2026-11-27
 date: 2023-02-09
 url: https://arxiv.org/abs/2302.04761
 source_dir: sources/papers/2302.04761
-venue: arXiv
+venue: NeurIPS 2023
 pages: 17
 by:
   - { entity: meta, role: org }
@@ -22,18 +22,18 @@ by:
   - { name: Nicola Cancedda, role: author }
   - { name: Thomas Scialom, role: author }
 relations:
-  - { concept: self-supervised-tool-learning, rel: extends, note: TALM 已在下游任务微调中用类似的自监督目标；Toolformer 改在通用预训练语料上让模型自己标注 API 调用，按后续 token 损失的降低筛选后微调模型本身，不绑定具体任务 }
+  - { concept: self-supervised-tool-learning, rel: proposes, note: 在通用预训练语料上让模型自己标注 API 调用，按后续 token 损失的降低筛选后微调模型本身，不绑定具体任务；TALM 已在下游任务微调中用类似的自监督目标 }
   - { source: papers/202210-react, rel: responds }
 ---
 
 ## 新认知
 
-- **Toolformer 让模型自己生成学用工具的训练数据：用少量示例提示模型在普通文本里插入候选 API 调用，执行后只保留能让后续 token 更好预测的调用，再在这份数据上微调模型本身（§1¶3）**。作者指出 TALM 已用过类似的自监督目标，但只在针对下游任务微调的设置下（§6¶2），所以本库把 Toolformer 记为[自监督工具使用学习](../concepts/self-supervised-tool-learning.md)的扩展。
+- **Toolformer 让模型自己生成学用工具的训练数据：用少量示例提示模型在普通文本里插入候选 API 调用，执行后只保留能让后续 token 更好预测的调用，再在这份数据上微调模型本身（§1¶3）**；TALM 用过类似的自监督目标，但只在针对下游任务微调的设置下（§6¶2），本库把不绑定任务的这一版记为[自监督工具使用学习](../concepts/self-supervised-tool-learning.md)的最早来源。
 - 筛选的比较对象是"不调用"和"调用但不给结果"两者中损失更低的一个（§2¶7），留下的调用必须靠返回结果本身降低损失，只写出调用意图不算有用，见[自监督工具使用学习](../concepts/self-supervised-tool-learning.md#设计空间)。
 - **6.7B 的 GPT-J 学会用工具后，零样本下在有对应工具的任务上超过 175B 的 GPT-3：数学三项 40.4 / 29.4 / 44.0 对 14.0 / 10.0 / 19.8（Tab. 4）；开放域问答上仍然落后，WebQS 26.3 对 29.0（Tab. 5）**，作者归因于搜索引擎太简单，且模型不能改写查询或翻看多条结果（§4.2.3¶2），见[自监督工具使用学习](../concepts/self-supervised-tool-learning.md#共识与分歧)。
 - 学工具不必牺牲语言建模：API 调用插回原文，其余文本与原语料完全相同（§2¶8）；关掉 API 后，Toolformer 在 WikiText 和 CCNet 上的困惑度与只在同一语料上微调的 GPT-J + CC 相同，都是 10.3 和 10.5（Tab. 8），见[自监督工具使用学习](../concepts/self-supervised-tool-learning.md)。
-- "模型自己决定何时调用"有一部分是解码设置推出来的：普通贪心解码下，T-REx 只有 40.3% 的样本调用 API，WebQS 只有 8.5%；作者让 `<API>` 只要排进前 10 就开始调用，比例升到 98.1% 和 100%（§5¶1）。贪心解码时模型调用 API 的时机有一定校准，k 变大后这种校准消失（§5¶1），见[自监督工具使用学习](../concepts/self-supervised-tool-learning.md#开放问题)。
-- 每个输入最多调用一次 API（§4.2¶2），各工具的训练调用相互独立地采样，所以模型学不会链式调用，也不能翻看结果或改写查询（§7¶1）。它学到的是单步的"何时调用、调什么"，多步交互是[推理与行动交替](../concepts/interleaved-reasoning-acting.md#设计空间)处理的问题。
+- "模型自己决定何时调用"有一部分是解码设置推出来的：普通贪心解码下，T-REx 只有 40.3% 的样本调用 API，WebQS 只有 8.5%；作者让 `<API>` 只要排进前 10 就开始调用，比例升到 98.1% 和 100%，而贪心解码时调用时机原有的一定校准在 k 变大后消失（§5¶1），见[自监督工具使用学习](../concepts/self-supervised-tool-learning.md#开放问题)。
+- 每个输入最多调用一次 API（§4.2¶2），各工具的训练调用相互独立地采样，所以模型学不会链式调用，也不能翻看结果或改写查询（§7¶1）；它学到的是单步的"何时调用、调什么"，多步交互是[推理与行动交替](../concepts/interleaved-reasoning-acting.md#设计空间)处理的问题。
 - 用工具的能力要到约 775M 参数才出现，更小的模型用不用工具表现差不多（§4.4¶2、Fig. 4），见[自监督工具使用学习](../concepts/self-supervised-tool-learning.md#开放问题)。
 
 ## 核心问题
@@ -86,7 +86,7 @@ relations:
 - Dateset 是作者自建的，只有知道当天日期才能回答（§4.2.5¶1），日历工具直接给出答题需要的信息，这一项接近给了答案的上界测试。
 - "超过 GPT-3"只在有对应工具的任务上成立，比较对象是零样本、未经指令微调的 davinci（§4.1¶4）。问答上 GPT-3 仍然更强（Tab. 5）；MLQA 上 Toolformer 连原始 GPT-J 都不能稳定超过（Tab. 6）。
 - 评测时把 `<API>` 的触发阈值放宽到前 10（§4.2¶2），高调用比例部分来自这个设置（Tab. 9）。这与"模型自己决定何时用工具"的说法有张力。
-- venue 记为 arXiv：arXiv 上只有 2023-02-09 的 v1，comment 为空，PDF 也没有写会议。全部作者署 Meta AI Research，Roberto Dessì 同时署 Universitat Pompeu Fabra。
+- venue 记为 NeurIPS 2023：arXiv 上只有 2023-02-09 的 v1，comment 为空，PDF 没有写会议；NeurIPS 2023 论文集收录了本文（Main Conference Track），该版本作者多了 Eric Hambro。本页作者按 arXiv v1 记录。全部作者署 Meta AI Research，Roberto Dessì 同时署 Universitat Pompeu Fabra。
 
 ## 与其他工作的关系
 
