@@ -239,3 +239,24 @@ test('showing entities makes the entity searchable and visible', async ({ page }
   await expect(page.locator('#graph-search-listbox li.graph-search__option').first()).toContainText('Demo Org');
 });
 
+test('an IME composition Enter (isComposing/keyCode 229) is ignored: no select, no Pagefind fallback', async ({ page }) => {
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  const input = page.locator('#graph-search-input');
+  await input.fill('压缩');
+  await expect(page.locator('#graph-search-listbox li.graph-search__option').first()).toBeVisible();
+
+  // Simulate the Enter keydown an IME sends while a candidate is still being composed:
+  // `isComposing: true` (and, on some browsers, legacy `keyCode: 229`) rather than a
+  // committed Enter. The handler must ignore it entirely.
+  await input.evaluate((el) => {
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true, keyCode: 229, bubbles: true }));
+  });
+
+  await expect(app(page)).toHaveAttribute('data-focus', '');
+  await expect(page.locator('.graph-panel')).toBeHidden();
+  await expect(page.locator('#graph-search-fulltext')).toBeHidden();
+  // The listbox itself is untouched by the composition keydown (still showing the live match).
+  await expect(page.locator('#graph-search-listbox li.graph-search__option').first()).toBeVisible();
+});
+

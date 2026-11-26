@@ -28,7 +28,7 @@ import { buildQuadtree, createLoop, createRenderer, type Renderer, type ViewStat
 import { clickAction, hitTest, isSource, neighbors, relatedSources } from './interaction';
 import { type GraphView, decodeView, encodeView } from './hash';
 import { searchNodes } from './search';
-import { applyFilters, DEFAULT_FILTERS, SOURCE_TYPES, type Filters, type SourceType } from './filters';
+import { applyFilters, DEFAULT_FILTERS, normalizeDateRange, SOURCE_TYPES, type Filters, type SourceType } from './filters';
 import { REL_LABEL } from '../lib/labels';
 import type { Rel } from '../lib/schema';
 
@@ -569,6 +569,11 @@ export async function initGraph(root: HTMLElement): Promise<void> {
 
   searchInput?.addEventListener('input', () => runSearch(searchInput.value));
   searchInput?.addEventListener('keydown', (e) => {
+    // IME composition (e.g. Chinese/Japanese/Korean input methods): the key that
+    // commits a candidate fires as a normal 'keydown' with key 'Enter' (and legacy
+    // keyCode 229 on some browsers), which must never select a result, trigger the
+    // Pagefind fallback, or move the listbox highlight/close anything.
+    if (e.isComposing || e.keyCode === 229) return;
     if (e.key === 'ArrowDown') {
       if (searchResults.length === 0) return;
       e.preventDefault();
@@ -645,12 +650,19 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   });
 
   const readFiltersFromUI = (): void => {
+    const { from, to } = normalizeDateRange(fromInput?.value || undefined, toInput?.value || undefined);
+    // Reflect a swap back into the inputs themselves, so "从"/"到" always display what was actually applied.
+    if (fromInput && from !== undefined && fromInput.value !== from) fromInput.value = from;
+    if (toInput && to !== undefined && toInput.value !== to) toInput.value = to;
+    // Each bound narrows the other: "到" can't go earlier than "从" and vice versa.
+    if (toInput) toInput.min = from ?? '';
+    if (fromInput) fromInput.max = to ?? '';
     filters = {
       types: new Set(typeInputs.filter((i) => i.checked).map((i) => i.value as SourceType)),
       rels: new Set(relInputs.filter((i) => i.checked).map((i) => i.value as Rel)),
       entities: entitiesInput?.checked === true,
-      ...(fromInput?.value ? { from: fromInput.value } : {}),
-      ...(toInput?.value ? { to: toInput.value } : {}),
+      ...(from ? { from } : {}),
+      ...(to ? { to } : {}),
     };
     applyFiltersNow();
   };

@@ -12,8 +12,10 @@ import { afterAll, beforeAll, describe, expect, test } from 'vitest';
 import { prepare } from '../scripts/prepare';
 import type { GNode, GraphData } from '../src/graph/build';
 import type { PageId } from '../src/lib/content-index';
-import { applyFilters, DEFAULT_FILTERS, type Filters } from '../src/graph/filters';
+import { applyFilters, DEFAULT_FILTERS, normalizeDateRange, type Filters } from '../src/graph/filters';
 import { searchNodes } from '../src/graph/search';
+import { REL_LABEL } from '../src/lib/labels';
+import { REL } from '../src/lib/schema';
 
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
 const MINI = path.join(REPO_ROOT, 'tests/fixtures/mini-repo');
@@ -181,5 +183,33 @@ describe('applyFilters', () => {
 
   test('isolated concept with no backlinks is still always visible', () => {
     expect(applyFilters(g, DEFAULT_FILTERS).has('wiki/concepts/isolated-idea')).toBe(true);
+  });
+});
+
+describe('normalizeDateRange', () => {
+  test('swaps from/to when from > to', () => {
+    expect(normalizeDateRange('2026-12', '2026-01')).toEqual({ from: '2026-01', to: '2026-12' });
+  });
+  test('leaves an already-ordered range unchanged', () => {
+    expect(normalizeDateRange('2026-01', '2026-12')).toEqual({ from: '2026-01', to: '2026-12' });
+  });
+  test('equal from/to is left as-is (not swapped)', () => {
+    expect(normalizeDateRange('2026-06', '2026-06')).toEqual({ from: '2026-06', to: '2026-06' });
+  });
+  test('a missing bound is passed through without swapping', () => {
+    expect(normalizeDateRange(undefined, '2026-01')).toEqual({ from: undefined, to: '2026-01' });
+    expect(normalizeDateRange('2026-12', undefined)).toEqual({ from: '2026-12', to: undefined });
+    expect(normalizeDateRange(undefined, undefined)).toEqual({ from: undefined, to: undefined });
+  });
+  test('a swapped range applied via applyFilters includes a source inside the corrected window', () => {
+    const paper = 'wiki/papers/202611-sample-paper'; // date: 2026-11-03
+    const { from, to } = normalizeDateRange('2026-12', '2026-10'); // typed backwards
+    expect(applyFilters(g, { ...DEFAULT_FILTERS, from, to }).has(paper)).toBe(true);
+  });
+});
+
+describe('REL_LABEL / REL pinning', () => {
+  test('REL_LABEL keys are declared in REL order (filters.ts/main.ts derive their rel-index Set from this)', () => {
+    expect(Object.keys(REL_LABEL)).toEqual([...REL]);
   });
 });

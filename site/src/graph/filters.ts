@@ -43,6 +43,18 @@ export const DEFAULT_FILTERS: Filters = {
 const isSourceType = (t: PageType): t is SourceType => (SOURCE_TYPES as readonly PageType[]).includes(t);
 
 /**
+ * `{ from, to }` with the two swapped if both are set and `from > to`
+ * (a user can type the "到" month before the "从" month, or set an earlier
+ * "从" after a later "到" was already set); otherwise returned unchanged.
+ * Pure, so `main.ts` can call it on every `change` before storing the
+ * values back into the UI and into `Filters`.
+ */
+export function normalizeDateRange(from: string | undefined, to: string | undefined): { from?: string; to?: string } {
+  if (from !== undefined && to !== undefined && from > to) return { from: to, to: from };
+  return { from, to };
+}
+
+/**
  * Nodes visible under filter set `f` (brief, binding): root/topics/concepts
  * are always visible; a source is visible when its type is selected and its
  * date (`d.slice(0, 7)`, `YYYY-MM`) falls within `[from, to]` inclusive —
