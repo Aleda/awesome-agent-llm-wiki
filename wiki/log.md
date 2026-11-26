@@ -15,3 +15,5 @@ type: raw
 ```
 2026-11-26 新建 · papers/2611-you-dont-need-long-context.md
 ```
+
+2026-11-26 新建 · 主题 agent/context/memory/rsi/continual-learning，术语表 7 条
