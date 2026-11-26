@@ -16,6 +16,7 @@
     "gray-matter": "^4.0.3",
     "d3-force": "^3.0.0",
     "d3-quadtree": "^3.0.1",
+    "d3-random": "^3.0.2",
     "unified": "^11.0.5",
     "remark-parse": "^11.0.0",
     "unist-util-visit": "^5.0.0",
@@ -32,6 +33,7 @@
     "@playwright/test": "^1.49.0",
     "@lhci/cli": "^0.14.0",
     "@types/d3-force": "^3.0.10",
-    "@types/d3-quadtree": "^1.0.6"
+    "@types/d3-quadtree": "^1.0.6",
+    "@types/d3-random": "^3.0.4"
   }
 }

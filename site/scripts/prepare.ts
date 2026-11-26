@@ -13,6 +13,11 @@
  * - `<siteDir>/public/data/anchors/<source_dir>.json` — one per source_dir
  *   that some wiki page actually references.
  * - `<siteDir>/public/data/glossary.json`       — term -> { term, text }.
+ * - `<siteDir>/public/data/graph.json`          — compact `GraphData`
+ *   (Task 10), coordinates computed once at build time with d3-force.
+ * - `<siteDir>/data/graph-positions.json` (or `positionsPath`, see
+ *   `PrepareOptions`) — every graph node's `[x, y]`, read back on the next
+ *   run so existing nodes barely move when content is added.
  *
  * Output dirs (`src/content/docs/`, `public/data/`, `.generated/`, all
  * under `siteDir`) are cleared at the start of every run so stale pages
@@ -34,6 +39,7 @@ import {
 } from '../src/lib/content-index';
 import { toRoute } from '../src/lib/routes';
 import { parseTranscriptAnchors, parseAnchorsMd } from '../src/lib/anchors';
+import { buildGraph } from '../src/graph/build';
 
 /**
  * Resolve `candidate` (relative or absolute) against `base` and assert the
@@ -108,6 +114,9 @@ function toPageInfo(page: Page): PageInfo {
   if (typeof fm.code === 'string') info.code = fm.code;
   if (typeof fm.pages === 'number') info.pages = fm.pages;
   if (typeof fm.show === 'string') info.show = fm.show;
+  if ('aliases' in fm && Array.isArray(fm.aliases) && fm.aliases.length > 0) {
+    info.aliases = fm.aliases as string[];
+  }
   return info;
 }
 
@@ -304,9 +313,64 @@ async function clearOutputDirs(siteDir: string): Promise<void> {
   }
 }
 
+/**
+ * Read the previous build's graph positions (`{ [PageId]: [x, y] }`) from
+ * `positionsPath`, so `buildGraph` can seed existing nodes from their old
+ * coordinates. Missing file, unreadable JSON, or anything that doesn't
+ * parse to a plain object all resolve to `{}` — a first run, or a corrupt
+ * file, should never fail the build; it only means every node starts from
+ * its computed initial position instead of a previous one.
+ */
+async function readPrevPositions(positionsPath: string): Promise<Record<PageId, [number, number]>> {
+  let raw: string;
+  try {
+    raw = await fs.readFile(positionsPath, 'utf8');
+  } catch {
+    return {};
+  }
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return {};
+    return parsed as Record<PageId, [number, number]>;
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Write `positionsPath` as `{ [PageId]: [x, y] }` for every graph node,
+ * pretty-printed with keys sorted so the committed file diffs stably
+ * (brief Step 5: "录入后随内容一起提交，保持布局稳定").
+ */
+async function writePositions(
+  positionsPath: string,
+  graph: { nodes: { id: PageId; x: number; y: number }[] },
+): Promise<void> {
+  const positions: Record<PageId, [number, number]> = {};
+  for (const node of graph.nodes) {
+    positions[node.id] = [node.x, node.y];
+  }
+  const sorted: Record<PageId, [number, number]> = {};
+  for (const id of Object.keys(positions).sort()) {
+    sorted[id] = positions[id];
+  }
+  await fs.mkdir(path.dirname(positionsPath), { recursive: true });
+  await fs.writeFile(positionsPath, JSON.stringify(sorted, null, 2) + '\n', 'utf8');
+}
+
 export interface PrepareOptions {
   root: string;
   siteDir: string;
+  /**
+   * Where to read the previous build's graph node positions from, and
+   * write this build's positions back to. Defaults to
+   * `<siteDir>/data/graph-positions.json` — the file committed to the
+   * repo so the real site's layout stays stable across builds. The CLI
+   * (`main`, below) overrides this to a `.generated/` path for fixture
+   * builds (`CONTENT_ROOT` set), so a test run building the mini-repo
+   * fixture never touches the committed real-content positions file.
+   */
+  positionsPath?: string;
 }
 
 /**
@@ -317,6 +381,7 @@ export interface PrepareOptions {
  */
 export async function prepare(opts: PrepareOptions): Promise<void> {
   const { root, siteDir } = opts;
+  const positionsPath = opts.positionsPath ?? path.join(siteDir, 'data/graph-positions.json');
 
   await clearOutputDirs(siteDir);
 
@@ -359,13 +424,24 @@ export async function prepare(opts: PrepareOptions): Promise<void> {
   const indexPath = path.join(siteDir, '.generated/index.json');
   await fs.mkdir(path.dirname(indexPath), { recursive: true });
   await fs.writeFile(indexPath, JSON.stringify(generatedIndex), 'utf8');
+
+  const prevPositions = await readPrevPositions(positionsPath);
+  const graph = buildGraph(generatedIndex, prevPositions);
+  const graphPath = path.join(siteDir, 'public/data/graph.json');
+  await fs.mkdir(path.dirname(graphPath), { recursive: true });
+  await fs.writeFile(graphPath, JSON.stringify(graph), 'utf8');
+  await writePositions(positionsPath, graph);
 }
 
 async function main(): Promise<void> {
   const root = process.env.CONTENT_ROOT ?? '..';
   const siteDir = '.';
+  const positionsPath =
+    process.env.CONTENT_ROOT === undefined
+      ? path.join(siteDir, 'data/graph-positions.json')
+      : path.join(siteDir, '.generated/graph-positions.json');
   try {
-    await prepare({ root, siteDir });
+    await prepare({ root, siteDir, positionsPath });
   } catch (error) {
     if (error instanceof ContentError) {
       for (const line of error.errors) {

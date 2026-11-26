@@ -12,6 +12,7 @@ site/playwright-report/
 *.wav
 *.webm
 .lighthouseci/
+.DS_Store
 
 # scratch workspace for planning/task tracking, not part of the wiki
 .superpowers/

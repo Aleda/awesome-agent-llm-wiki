@@ -56,6 +56,7 @@ export interface PageInfo {
   code?: string;
   pages?: number;
   show?: string;
+  aliases?: string[];
 }
 
 /**

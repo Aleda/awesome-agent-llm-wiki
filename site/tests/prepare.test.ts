@@ -100,6 +100,16 @@ describe('prepare on mini-repo', () => {
     expect(index.pages['wiki/concepts/context-compaction'].sourceKey).toBeUndefined();
   });
 
+  test('index.pages carries aliases from frontmatter', () => {
+    expect(index.pages['wiki/concepts/context-compaction'].aliases).toEqual([
+      'Context Compaction',
+    ]);
+  });
+
+  test('index.pages omits aliases when frontmatter has none', () => {
+    expect(index.pages['wiki/papers/202611-sample-paper'].aliases).toBeUndefined();
+  });
+
   test('index has edges and backlinks records', () => {
     expect(
       index.edges.some(
