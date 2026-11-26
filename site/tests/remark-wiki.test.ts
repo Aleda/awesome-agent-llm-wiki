@@ -70,10 +70,13 @@ describe('remarkWiki links', () => {
       '/wiki/concepts/context-compaction/',
     ));
 
-  test('missing internal link becomes text', async () =>
-    expect(await md('[x](../concepts/nope.md)', 'wiki/papers/202611-sample-paper.md')).not.toContain(
-      '<a',
-    ));
+  test('missing internal link becomes text', async () => {
+    // The page's own text is checked, not the whole document: this paper id
+    // always carries a Task 8 "关系" section (real outgoing/incoming edges),
+    // which legitimately renders `<a>` links further down the document.
+    const html = await md('[x](../concepts/nope.md)', 'wiki/papers/202611-sample-paper.md');
+    expect(html.split('<h2>关系</h2>')[0]).not.toContain('<a');
+  });
 
   test('glossary link gets term preview', async () =>
     expect(

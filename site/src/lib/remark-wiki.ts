@@ -15,15 +15,22 @@
  * `来源：` switches it to the `source_dir` of its first link's target until
  * the next `来源：` paragraph; a link inside the same `（…）` group as a
  * citation overrides it for that citation.
+ * - Build-time auto sections (Task 8, `./auto-sections.ts`): a bullet list
+ *   (or a `暂无` paragraph when empty) is injected under the page's `##
+ *   关系`/`演化`/`最近进展`/`相关素材` heading (whichever applies to its
+ *   type) when that heading exists and is empty, else appended as a new
+ *   heading at the end of the document. Runs after the link-rewrite pass
+ *   below so its freshly built links are not re-processed by it.
  *
  * Index and anchor JSON are read once per process (cached by path).
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import type { Link, Parent, PhrasingContent, Root, Text } from 'mdast';
+import type { Heading, Link, List, ListItem, Parent, PhrasingContent, Root, RootContent, Text } from 'mdast';
 import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import { findCitations } from './anchors';
+import { autoSections, type AutoItem } from './auto-sections';
 import { resolveLink, termSlug, type GeneratedIndex, type PageId } from './content-index';
 import { BASE, followRedirects, toRoute } from './routes';
 
@@ -217,6 +224,96 @@ function restoreBareDirectives(tree: Root): void {
   });
 }
 
+/**
+ * Render one `AutoItem` as a list item's inline children: `date · [title]
+ * (href) · rel · note`, each part omitted when absent. The link already
+ * carries its final `href` and (for non-raw pages) `data-preview`, so this
+ * output is never touched by pass 2 above (it runs after it).
+ */
+function autoItemToListItem(item: AutoItem, idx: GeneratedIndex): ListItem {
+  const parts: PhrasingContent[] = [];
+  const push = (text: string) => {
+    if (parts.length > 0) parts.push({ type: 'text', value: ' · ' });
+    parts.push({ type: 'text', value: text });
+  };
+
+  if (item.date !== undefined) push(item.date);
+
+  const href = toRoute(item.href);
+  const linkProps: Record<string, unknown> = { href };
+  const targetInfo = idx.pages[item.href];
+  if (targetInfo !== undefined && targetInfo.type !== 'raw') {
+    linkProps.dataPreview = `${BASE}/data/previews/${item.href}.json`;
+  }
+  const link: Link = {
+    type: 'link',
+    url: href,
+    children: [{ type: 'text', value: item.title }],
+    data: { hProperties: linkProps },
+  };
+  if (parts.length > 0) parts.push({ type: 'text', value: ' · ' });
+  parts.push(link);
+
+  if (item.rel !== undefined) push(item.rel);
+  if (item.note !== undefined) push(item.note);
+
+  return { type: 'listItem', children: [{ type: 'paragraph', children: parts }] };
+}
+
+/** Build the mdast nodes for a section's content: a bullet list, or a `暂无` paragraph when `items` is empty. */
+function autoSectionNodes(items: AutoItem[], idx: GeneratedIndex): RootContent[] {
+  if (items.length === 0) {
+    return [{ type: 'paragraph', children: [{ type: 'text', value: '暂无' }] }];
+  }
+  const list: List = {
+    type: 'list',
+    ordered: false,
+    children: items.map((item) => autoItemToListItem(item, idx)),
+  };
+  return [list];
+}
+
+/** Heading text as plain text (children are plain text in every real heading this plugin injects into). */
+function headingText(heading: Heading): string {
+  return heading.children.map((c) => ('value' in c ? (c as Text).value : '')).join('');
+}
+
+/**
+ * Inject each of `autoSections(fromId, idx)`'s lists into `tree`: under an
+ * existing `## <heading>` whose body is empty (next sibling is another
+ * heading or end of document) when one exists with that exact text, else
+ * appended as a new heading + list at the end of the document.
+ */
+function insertAutoSections(tree: Root, fromId: PageId, idx: GeneratedIndex): void {
+  const sections = autoSections(fromId, idx);
+  const headingTexts = Object.keys(sections);
+  if (headingTexts.length === 0) return;
+
+  for (const heading of headingTexts) {
+    const items = sections[heading];
+    const content = autoSectionNodes(items, idx);
+
+    const children = tree.children as RootContent[];
+    const at = children.findIndex(
+      (node) => node.type === 'heading' && node.depth === 2 && headingText(node) === heading,
+    );
+
+    if (at !== -1) {
+      const next = children[at + 1];
+      const isEmpty = next === undefined || next.type === 'heading';
+      if (isEmpty) {
+        children.splice(at + 1, 0, ...content);
+        continue;
+      }
+      // heading exists but already has hand-written content: leave it untouched.
+      continue;
+    }
+
+    const newHeading: Heading = { type: 'heading', depth: 2, children: [{ type: 'text', value: heading }] };
+    children.push(newHeading, ...content);
+  }
+}
+
 export const remarkWiki: Plugin<[RemarkWikiOptions], Root> = (opts) => {
   return (tree, file) => {
     const fromId = docsPageId(file.path);
@@ -319,6 +416,11 @@ export const remarkWiki: Plugin<[RemarkWikiOptions], Root> = (opts) => {
       // hProperties.href keeps non-ASCII fragments (`#定义`) as written, matching heading ids.
       node.data = { ...node.data, hProperties: { ...(node.data?.hProperties ?? {}), ...props } };
     });
+
+    // Pass 3: inject build-time auto sections (Task 8). Runs after the link
+    // rewrite above so the nodes built here (already carrying their final
+    // href/data-preview) are not re-processed by it.
+    insertAutoSections(tree, fromId, index);
   };
 };
 
