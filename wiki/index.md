@@ -15,7 +15,7 @@ type: raw
 
 ## 概念
 
-- [模型自管理上下文](concepts/model-managed-context.md) — 由正在执行任务的模型决定上下文里保留、改写和删除什么，而不是交给外部固定规则
+- [模型自管理上下文](concepts/model-managed-context.md) — 由执行任务的模型自己决定上下文保留、改写和删除什么，取代外部固定规则
 - [后缀缓存复用](concepts/suffix-cache-reuse.md) — 上下文中段被编辑后，复用未改动后缀的旧 KV cache，只重新计算新插入的部分
 - [成功门控的效率奖励](concepts/success-gated-efficiency-reward.md) — RL 中只在成功轨迹之间按推理成本给效率奖励，避免模型为省算力牺牲正确性
 

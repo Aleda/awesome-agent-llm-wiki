@@ -61,10 +61,10 @@ CLM 论文自建的多仓库优化任务：六个 agent 各负责一个仓库（
 
 Princeton 团队 2023 年发布的软件工程 benchmark，任务取自真实 GitHub 仓库的 issue：模型要生成代码补丁，用当初修复该 issue 的 PR 中的测试判定是否解决。SWE-bench Verified 是 OpenAI 于 2024 年发布的 500 题子集，题目经过人工核验。
 
-## TerminalBench
-
-评测 agent 在终端环境中完成任务的 benchmark，也写作 Terminal-Bench。每个任务在容器里运行，agent 通过命令行操作，由任务附带的测试脚本判定是否完成。
-
 ## TBLite
 
 OpenThoughts-TBLite，由 OpenThoughts-Agent 团队发布的终端 agent benchmark，定位是便于快速迭代的高信号任务集。CLM 论文按 TerminalBench 2.1 的方式设置轮数、时限和评分。
+
+## TerminalBench
+
+评测 agent 在终端环境中完成任务的 benchmark，也写作 Terminal-Bench。每个任务在容器里运行，agent 通过命令行操作，由任务附带的测试脚本判定是否完成。
