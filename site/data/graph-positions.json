@@ -1,19 +1,23 @@
 {
   "wiki/blogs/20260918-anthropic-when-ai-builds-itself": [
-    50,
-    748
+    143,
+    966
   ],
   "wiki/concepts/ai-rd-uplift-measurement": [
     160,
     795
+  ],
+  "wiki/concepts/automated-ai-research": [
+    -160,
+    1205
   ],
   "wiki/concepts/frequent-context-compaction": [
     102,
     -761
   ],
   "wiki/concepts/human-bottleneck-in-ai-rd": [
-    33,
-    1258
+    260,
+    994
   ],
   "wiki/concepts/model-managed-context": [
     -60,
@@ -32,28 +36,28 @@
     -743
   ],
   "wiki/concepts/verifiable-coordinated-slowdown": [
-    103,
-    1239
+    107,
+    1237
   ],
   "wiki/entities/anthropic": [
-    20,
-    833
+    60,
+    930
   ],
   "wiki/entities/jack-clark": [
-    -14,
-    685
+    79,
+    902
   ],
   "wiki/entities/meta": [
-    -142,
-    -710
+    -143,
+    -709
   ],
   "wiki/entities/nvidia": [
-    -11,
+    -12,
     -751
   ],
   "wiki/entities/uw": [
-    -151,
-    -677
+    -150,
+    -676
   ],
   "wiki/papers/202609-context-language-models": [
     -61,
@@ -61,7 +65,7 @@
   ],
   "wiki/papers/202611-you-dont-need-long-context": [
     25,
-    -669
+    -668
   ],
   "wiki/topics/agent": [
     0,
@@ -85,6 +89,6 @@
   ],
   "wiki/videos/20261125-agent-deep-research-clm": [
     -132,
-    -769
+    -768
   ]
 }

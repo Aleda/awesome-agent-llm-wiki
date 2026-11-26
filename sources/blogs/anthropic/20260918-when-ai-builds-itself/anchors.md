@@ -43,3 +43,6 @@
 - §5¶6: "Marina Favaro and Jack Clark co-authored this piece, with editorial support from Santi Ruiz."
 - §7¶1: "Our >80% figure measures the share of lines merged to production that can be attributed to Claude."
 - §7¶2: "They reflect individual views as of May 2026, not official company positions."
+- §0¶18: "Closing the loop"
+- §0¶19: "In the future, agents could become capable enough to build and train models themselves."
+- §2¶3: "At the most senior levels, they are deciding which problems are worth working on at all"

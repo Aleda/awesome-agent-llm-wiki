@@ -25,7 +25,7 @@ order: 3
 
 ### 自动化研究
 
-- 端到端的自动化研究：从提出想法、做实验到写出论文（The AI Scientist 一类）。
+- [自动化 AI 研究](../concepts/automated-ai-research.md)：把 AI 研发的执行、设计和选题逐级交给 AI，直到端到端做研究、构建自己的后继者；端到端论文 agent（The AI Scientist 一类）待录入。
 - 研究工程能力的评测：复现已发表的结果、完成 ML 工程任务。
 
 ### 度量与治理

@@ -20,6 +20,7 @@ type: raw
 - [成功门控的效率奖励](concepts/success-gated-efficiency-reward.md) — RL 中只在成功轨迹之间按推理成本给效率奖励，避免模型为省算力牺牲正确性
 - [频繁上下文压缩](concepts/frequent-context-compaction.md) — 压缩阈值设得远低于 context window，甚至每个动作后压缩一次，让 agent 始终在短上下文里工作
 - [语义状态空间模型](concepts/semantic-state-space-model.md) — 后训练模型每轮读写一段自然语言状态并只做一个动作，以此取代累积完整对话历史
+- [自动化 AI 研究](concepts/automated-ai-research.md) — 把 AI 研发的执行、设计和选题逐级交给 AI，直到 AI 能端到端研发自己的后继者
 - [AI 研发加速度量](concepts/ai-rd-uplift-measurement.md) — 用外部基准、内部产出和受控研究任务，衡量 AI 把 AI 研发本身加快了多少
 - [AI 研发中的人类瓶颈](concepts/human-bottleneck-in-ai-rd.md) — 执行环节交给 AI 后，人工审查和定研究方向成为限制整体研发速度的环节
 - [可验证的协调放缓](concepts/verifiable-coordinated-slowdown.md) — 多家前沿实验室在能相互核实的前提下，按相同条件同时放缓或暂停前沿 AI 开发

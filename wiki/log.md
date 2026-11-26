@@ -29,3 +29,5 @@ type: raw
 2026-11-27 录入素材 · blogs/20260918-anthropic-when-ai-builds-itself.md
 2026-11-27 新建 · concepts/ai-rd-uplift-measurement.md、concepts/human-bottleneck-in-ai-rd.md、concepts/verifiable-coordinated-slowdown.md、entities/anthropic.md、entities/jack-clark.md
 2026-11-27 更新 · topics/rsi.md、glossary.md、index.md
+2026-11-27 新建 · concepts/automated-ai-research.md
+2026-11-27 更新 · blogs/20260918-anthropic-when-ai-builds-itself.md、concepts/ai-rd-uplift-measurement.md、concepts/human-bottleneck-in-ai-rd.md、concepts/verifiable-coordinated-slowdown.md、topics/rsi.md、index.md
