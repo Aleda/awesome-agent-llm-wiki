@@ -22,8 +22,7 @@ const { rows, type } = Astro.props;
         <span class="label">{row.label}</span>
         <span class="items">
           {row.items.map((item, i) => (
-            <>
-              {i > 0 && <span class="sep">、</span>}
+            <span class="item">
               {item.href !== undefined ? (
                 <a href={item.href} data-preview={item.preview}>
                   {item.text}
@@ -31,7 +30,8 @@ const { rows, type } = Astro.props;
               ) : (
                 <span>{item.text}</span>
               )}
-            </>
+              {i < row.items.length - 1 && <span class="sep">、</span>}
+            </span>
           ))}
           {row.overflow.length > 0 && (
             <details class="overflow">
@@ -78,15 +78,28 @@ const { rows, type } = Astro.props;
     color: var(--accent);
     font-weight: 600;
   }
+  /* Same wrapping rule as MetaCard: items wrap whole, long values break
+     inside instead of clipping. */
   .items {
     flex: 1;
     min-width: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    row-gap: 0.125rem;
+  }
+  .item {
+    max-width: 100%;
+    overflow-wrap: anywhere;
   }
   .sep {
     color: var(--card-border);
   }
   .overflow {
     display: inline;
+  }
+  .overflow[open] {
+    flex-basis: 100%;
   }
   .overflow summary {
     display: inline;
