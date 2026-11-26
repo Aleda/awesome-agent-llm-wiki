@@ -5,6 +5,8 @@ site/.generated/
 site/src/content/docs/
 site/public/data/
 site/.astro/
+site/test-results/
+site/playwright-report/
 *.m4a
 *.mp3
 *.wav

@@ -1,0 +1,47 @@
+---
+/**
+ * Hover preview card UI (Task 9). Rendered once per content page from
+ * `PageTitle.astro`; its `<script>` initializes `initHoverCards(document)`
+ * (Astro hoists/bundles module scripts and runs them once per page load).
+ * The card element itself (`.hovercard`) is built at runtime by
+ * `src/scripts/hovercard.ts`; this component only ships the styling (using
+ * the shared tokens in `src/styles/tokens.css`) and the init script.
+ */
+---
+
+<script>
+  import { initHoverCards } from '../scripts/hovercard';
+  initHoverCards(document);
+</script>
+
+<style is:global>
+  .hovercard {
+    position: fixed;
+    z-index: 100;
+    max-width: 22rem;
+    background: var(--card-bg);
+    border: 1px solid var(--card-border);
+    border-radius: 0.5rem;
+    box-shadow: var(--card-shadow);
+    padding: 0.625rem 0.875rem;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    pointer-events: auto;
+  }
+
+  .hovercard-title {
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+  }
+
+  .hovercard-insight {
+    margin-top: 0.25rem;
+    opacity: 0.85;
+  }
+
+  .hovercard-topics {
+    margin-top: 0.375rem;
+    font-size: 0.75rem;
+    opacity: 0.7;
+  }
+</style>

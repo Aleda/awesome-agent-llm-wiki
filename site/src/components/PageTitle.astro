@@ -10,6 +10,9 @@
  *   fields, see `metaCard` in `page-info.ts`).
  * - raw and entity pages: no cards.
  *
+ * Every content page also gets `<HoverCard />` (Task 9), which loads the
+ * hover-preview script once per page load regardless of which cards show.
+ *
  * The current page's `PageId` is derived from `Astro.locals.starlightRoute
  * .entry.id`, which — per `site/src/content.config.ts`'s `generateId` — is
  * the docs-relative path without extension (e.g.
@@ -21,6 +24,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Default from '@astrojs/starlight/components/PageTitle.astro';
+import HoverCard from './HoverCard.astro';
 import MetaCard from './MetaCard.astro';
 import SourceCard from './SourceCard.astro';
 import { metaCard, sourceCard } from '../lib/page-info';
@@ -66,6 +70,7 @@ const sourceRows = pageId !== null && index !== null ? sourceCard(pageId, index)
 ---
 
 <Default />
+<HoverCard />
 
 {
   info !== undefined && (showSourceLayout || showMetaOnly) && (
