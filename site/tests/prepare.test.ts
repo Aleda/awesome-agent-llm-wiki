@@ -142,6 +142,38 @@ describe('prepare clears stale output', () => {
   });
 });
 
+describe('prepare glossary fallback', () => {
+  test('writes an empty glossary.json when wiki/glossary.md is missing', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-test-noglossary-root-'));
+    const siteDir = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-test-noglossary-site-'));
+    try {
+      // Minimal repo with no wiki/glossary.md at all.
+      await fs.mkdir(path.join(root, 'wiki/topics'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'wiki/topics/agent.md'),
+        [
+          '---',
+          'title: Agent',
+          'type: topic',
+          'summary: 根主题。',
+          'added: 2026-11-26',
+          'root: true',
+          '---',
+          '',
+          '## 这个方向在解决什么',
+          '',
+        ].join('\n'),
+      );
+
+      await prepare({ root, siteDir });
+      expect(JSON.parse(read(siteDir, 'public/data/glossary.json'))).toEqual({});
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+      await fs.rm(siteDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('stripInsight', () => {
   test('removes bold/italic/backtick markers', () => {
     expect(stripInsight('**bold** and *italic* and `code`')).toBe('bold and italic and code');

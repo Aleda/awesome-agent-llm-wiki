@@ -75,6 +75,35 @@ async function writeConcept(wikiDir: string, slug: string, extraFrontmatter: str
   );
 }
 
+/** Write a minimal valid paper page with a given `source_dir`, so loadRepo can validate it. */
+async function writePaper(wikiDir: string, slug: string, sourceDir: string) {
+  await fs.mkdir(path.join(wikiDir, 'papers'), { recursive: true });
+  await fs.writeFile(
+    path.join(wikiDir, 'papers', `${slug}.md`),
+    [
+      '---',
+      `title: ${slug}`,
+      'type: paper',
+      'summary: 临时测试论文。',
+      'topics: [context]',
+      'added: 2026-11-26',
+      'date: 2026-11-03',
+      'url: https://arxiv.org/abs/0000.00000',
+      `source_dir: ${sourceDir}`,
+      'venue: arXiv',
+      'by: []',
+      'relations:',
+      '  - { topic: context, rel: proposes }',
+      '---',
+      '',
+      '## 新认知',
+      '',
+      '- 临时测试内容。',
+      '',
+    ].join('\n'),
+  );
+}
+
 /** Make a temp dir under the OS tmpdir with a `wiki/` subdir, auto-cleaned via `using`-style helper. */
 async function makeTempRepo(): Promise<{ root: string; wikiDir: string; cleanup: () => Promise<void> }> {
   const root = await fs.mkdtemp(path.join(os.tmpdir(), 'content-index-test-'));
@@ -148,6 +177,67 @@ describe('loadRepo on broken-repo', () => {
     const err = await loadRepo(BROKEN).catch((e) => e);
     expect(err).toBeInstanceOf(ContentError);
     expect(err.errors).toHaveLength(3);
+  });
+});
+
+describe('loadRepo source_dir validation (temp fixtures, path traversal)', () => {
+  test('source_dir with a ".." segment is an error, not a path escape', async () => {
+    const { wikiDir, cleanup } = await makeTempRepo();
+    try {
+      await writeContextTopic(wikiDir);
+      await writePaper(wikiDir, 'traversal-paper', '../../../../etc');
+
+      const err = await loadRepo(path.dirname(wikiDir)).catch((e) => e);
+      expect(err).toBeInstanceOf(ContentError);
+      expect(err.errors).toHaveLength(1);
+      expect(err.errors[0]).toMatch(/invalid source_dir/);
+      expect(err.errors[0]).toMatch(/traversal-paper/);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  test('absolute source_dir is an error', async () => {
+    const { wikiDir, cleanup } = await makeTempRepo();
+    try {
+      await writeContextTopic(wikiDir);
+      await writePaper(wikiDir, 'absolute-paper', '/etc/passwd-dir');
+
+      const err = await loadRepo(path.dirname(wikiDir)).catch((e) => e);
+      expect(err).toBeInstanceOf(ContentError);
+      expect(err.errors).toHaveLength(1);
+      expect(err.errors[0]).toMatch(/invalid source_dir/);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  test('source_dir not rooted at sources/ is an error', async () => {
+    const { wikiDir, cleanup } = await makeTempRepo();
+    try {
+      await writeContextTopic(wikiDir);
+      await writePaper(wikiDir, 'wrong-root-paper', 'not-sources/papers/x');
+
+      const err = await loadRepo(path.dirname(wikiDir)).catch((e) => e);
+      expect(err).toBeInstanceOf(ContentError);
+      expect(err.errors).toHaveLength(1);
+      expect(err.errors[0]).toMatch(/invalid source_dir/);
+    } finally {
+      await cleanup();
+    }
+  });
+
+  test('a normal sources/ source_dir is valid', async () => {
+    const { wikiDir, cleanup } = await makeTempRepo();
+    try {
+      await writeContextTopic(wikiDir);
+      await writePaper(wikiDir, 'valid-paper', 'sources/papers/0000.00000');
+
+      const idx = await loadRepo(path.dirname(wikiDir));
+      expect(idx.pages.has('wiki/papers/valid-paper')).toBe(true);
+    } finally {
+      await cleanup();
+    }
   });
 });
 

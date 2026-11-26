@@ -36,6 +36,25 @@ import { toRoute } from '../src/lib/routes';
 import { parseTranscriptAnchors, parseAnchorsMd } from '../src/lib/anchors';
 
 /**
+ * Resolve `candidate` (relative or absolute) against `base` and assert the
+ * result stays inside `base`. `loadRepo` already rejects a `source_dir`
+ * that is absolute or has a `..` segment, so this is a second,
+ * independent check at the point every content-derived path is actually
+ * used for I/O — defense in depth against any value (current or future)
+ * that reaches here without going through that validation. Returns the
+ * resolved absolute path; throws if it escapes `base`.
+ */
+function within(base: string, candidate: string): string {
+  const resolvedBase = path.resolve(base);
+  const resolvedCandidate = path.resolve(base, candidate);
+  const relative = path.relative(resolvedBase, resolvedCandidate);
+  if (relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error(`path escapes ${resolvedBase}: ${candidate}`);
+  }
+  return resolvedCandidate;
+}
+
+/**
  * Strip an insight bullet (from `## 新认知`) down to plain prose:
  * `**bold**`/`*italic*`/`` `code` `` markers are removed, `[text](url)`
  * markdown links become `text`, and full-width-paren citation groups
@@ -123,7 +142,7 @@ async function copySourceRawFiles(
 ): Promise<void> {
   for (const sourceDir of sourceDirs) {
     for (const filename of ['transcript.md', 'anchors.md']) {
-      const srcPath = path.join(root, sourceDir, filename);
+      const srcPath = within(root, path.join(sourceDir, filename));
       let raw: string;
       try {
         raw = await fs.readFile(srcPath, 'utf8');
@@ -139,7 +158,10 @@ async function copySourceRawFiles(
         pagefind: false,
         raw: parsed.data,
       });
-      const destPath = path.join(siteDir, 'src/content/docs', sourceDir, filename);
+      const destPath = within(
+        path.join(siteDir, 'src/content/docs'),
+        path.join(sourceDir, filename),
+      );
       await fs.mkdir(path.dirname(destPath), { recursive: true });
       await fs.writeFile(destPath, rewritten, 'utf8');
     }
@@ -163,7 +185,7 @@ async function writePreviews(
       topics: info.topics,
     };
     if (info.insights.length > 0) preview.insight = info.insights[0];
-    const destPath = path.join(siteDir, 'public/data/previews', `${id}.json`);
+    const destPath = within(path.join(siteDir, 'public/data/previews'), `${id}.json`);
     await fs.mkdir(path.dirname(destPath), { recursive: true });
     await fs.writeFile(destPath, JSON.stringify(preview), 'utf8');
   }
@@ -190,7 +212,7 @@ async function writeAnchorFiles(
     const anchors: Record<string, { text: string; href: string }> = {};
 
     if (page.fm.type === 'video' || page.fm.type === 'podcast') {
-      const transcriptPath = path.join(root, sourceDir, 'transcript.md');
+      const transcriptPath = within(root, path.join(sourceDir, 'transcript.md'));
       let raw: string;
       try {
         raw = await fs.readFile(transcriptPath, 'utf8');
@@ -204,7 +226,7 @@ async function writeAnchorFiles(
         anchors[key] = { text, href: toRoute(transcriptId, `#t-${hhmmss}`) };
       }
     } else if (page.fm.type === 'paper' || page.fm.type === 'blog') {
-      const anchorsMdPath = path.join(root, sourceDir, 'anchors.md');
+      const anchorsMdPath = within(root, path.join(sourceDir, 'anchors.md'));
       let raw: string;
       try {
         raw = await fs.readFile(anchorsMdPath, 'utf8');
@@ -220,45 +242,52 @@ async function writeAnchorFiles(
       continue;
     }
 
-    const destPath = path.join(siteDir, 'public/data/anchors', `${sourceDir}.json`);
+    const destPath = within(path.join(siteDir, 'public/data/anchors'), `${sourceDir}.json`);
     await fs.mkdir(path.dirname(destPath), { recursive: true });
     await fs.writeFile(destPath, JSON.stringify(anchors), 'utf8');
   }
 }
 
-/** Parse `wiki/glossary.md`'s body into `public/data/glossary.json`. */
+/**
+ * Parse `wiki/glossary.md`'s body into `public/data/glossary.json`. Always
+ * writes the file, even as `{}` when `wiki/glossary.md` is missing, so a
+ * hover-card fetch for a term never 404s.
+ */
 async function writeGlossary(root: string, siteDir: string): Promise<void> {
   const glossaryPath = path.join(root, 'wiki/glossary.md');
-  let raw: string;
+  const glossary: Record<string, { term: string; text: string }> = {};
+
+  let raw: string | undefined;
   try {
     raw = await fs.readFile(glossaryPath, 'utf8');
   } catch {
-    return; // no glossary in this repo: nothing to write
-  }
-  const { content } = matter(raw);
-
-  const glossary: Record<string, { term: string; text: string }> = {};
-  const lines = content.split('\n');
-  let currentTerm: string | null = null;
-  let buffer: string[] = [];
-
-  function flush() {
-    if (currentTerm === null) return;
-    const text = stripInsight(buffer.join('\n').trim());
-    glossary[termSlug(currentTerm)] = { term: currentTerm, text };
+    raw = undefined; // no glossary in this repo: still write {}
   }
 
-  for (const line of lines) {
-    const heading = /^##\s+(.+?)\s*$/.exec(line);
-    if (heading) {
-      flush();
-      currentTerm = heading[1];
-      buffer = [];
-    } else if (currentTerm !== null) {
-      buffer.push(line);
+  if (raw !== undefined) {
+    const { content } = matter(raw);
+    const lines = content.split('\n');
+    let currentTerm: string | null = null;
+    let buffer: string[] = [];
+
+    const flush = () => {
+      if (currentTerm === null) return;
+      const text = stripInsight(buffer.join('\n').trim());
+      glossary[termSlug(currentTerm)] = { term: currentTerm, text };
+    };
+
+    for (const line of lines) {
+      const heading = /^##\s+(.+?)\s*$/.exec(line);
+      if (heading) {
+        flush();
+        currentTerm = heading[1];
+        buffer = [];
+      } else if (currentTerm !== null) {
+        buffer.push(line);
+      }
     }
+    flush();
   }
-  flush();
 
   const destPath = path.join(siteDir, 'public/data/glossary.json');
   await fs.mkdir(path.dirname(destPath), { recursive: true });

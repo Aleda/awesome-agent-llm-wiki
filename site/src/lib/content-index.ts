@@ -80,6 +80,28 @@ export class ContentError extends Error {
 
 const WIKI_FILENAME_RE = /^[a-z0-9][a-z0-9.-]*\.md$/;
 
+/**
+ * Validate a page's `source_dir` frontmatter value. Returns an error
+ * message string when invalid, `null` when valid. Rejects anything that
+ * could let a path built from `source_dir` escape the repo root or the
+ * site's output dirs: absolute paths, any `..` path segment, and anything
+ * not rooted at `sources/` (every real value looks like
+ * `sources/papers/2611.00001`).
+ */
+function validateSourceDir(sourceDir: string): string | null {
+  if (path.posix.isAbsolute(sourceDir) || /^[a-zA-Z]:[\\/]/.test(sourceDir)) {
+    return `must be a relative path under sources/, got absolute path ${sourceDir}`;
+  }
+  const segments = sourceDir.split(/[\\/]/);
+  if (segments.includes('..') || segments.includes('.')) {
+    return `must not contain "." or ".." path segments, got ${sourceDir}`;
+  }
+  if (!sourceDir.startsWith('sources/')) {
+    return `must start with "sources/", got ${sourceDir}`;
+  }
+  return null;
+}
+
 /** One relation entry from a page's frontmatter `relations` list (see schema.ts). */
 interface RelationLike {
   concept?: string;
@@ -227,6 +249,14 @@ export async function loadRepo(root: string): Promise<RepoIndex> {
         errors.push(`schema error in wiki/${relPath}: ${issue.path.join('.')} ${issue.message}`);
       }
       continue;
+    }
+
+    if ('source_dir' in result.data && typeof result.data.source_dir === 'string') {
+      const sourceDirError = validateSourceDir(result.data.source_dir);
+      if (sourceDirError !== null) {
+        errors.push(`invalid source_dir in wiki/${relPath}: ${sourceDirError}`);
+        continue;
+      }
     }
 
     parsed.push({ repoPath, fm: result.data, body: content });
