@@ -435,3 +435,87 @@ def test_throttle_does_not_sleep_when_calls_are_far_apart():
         _throttle()
         _throttle()
     mock_sleep.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# Task 23b: captions and headings are collected as raw markup and rendered
+# by the same `_strip_tags` as the cached full text, so every anchor value is
+# an exact substring of `_strip_tags(html)` (the fetch-time self-check and
+# lint's `.cache` check both depend on this). Shapes mirror arXiv
+# 2307.03172 (Fig. 4 "Figure 2 ." cross-ref) and 2310.05736 (Fig. 2 math
+# alttext, §5.3 "&amp;").
+# ---------------------------------------------------------------------------
+
+
+def _fig_html(fig_id: str, caption_inner: str) -> str:
+    return (
+        f'<figure id="{fig_id}" class="ltx_figure">'
+        '<img src="x.png" alt="">'
+        f'<figcaption class="ltx_caption">{caption_inner}</figcaption>'
+        "</figure>"
+    )
+
+
+def _assert_anchor_is_substring_of_fulltext(anchors: list[str], prefix: str, html: str) -> str:
+    line = next(a for a in anchors if a.startswith(prefix))
+    value = line[len(prefix):]
+    assert value in _strip_tags(html)
+    return value
+
+
+def test_caption_span_boundaries_keep_fulltext_spacing():
+    html = _fig_html(
+        "S2.F4",
+        '<span class="ltx_tag ltx_tag_figure">Figure 4: </span>'
+        "Modulating the input context length of the example presented in "
+        '<a href="#S2.F2" class="ltx_ref"><span class="ltx_text ltx_ref_tag">Figure 2</span></a>.',
+    )
+    value = _assert_anchor_is_substring_of_fulltext(anchors_from_html(html), "- Fig. 4 — ", html)
+    assert value.endswith("Figure 2 .")
+
+
+def test_caption_math_uses_alttext_like_fulltext():
+    html = _fig_html(
+        "S5.F2",
+        '<span class="ltx_tag ltx_tag_figure">Figure 2: </span>'
+        "Generated lengths at varying compression ratios ("
+        '<math alttext="1/\\tau" class="ltx_Math" display="inline"><semantics>'
+        "<mrow><mn>1</mn><mo>/</mo><mi>τ</mi></mrow>"
+        '<annotation encoding="application/x-tex">1/\\tau</annotation>'
+        "</semantics></math>).",
+    )
+    value = _assert_anchor_is_substring_of_fulltext(anchors_from_html(html), "- Fig. 2 — ", html)
+    assert "(1/\\tau)" in value
+    assert "τ" not in value
+
+
+def test_entities_decoded_once_in_caption_heading_and_fulltext():
+    html = (
+        '<h3 class="ltx_title ltx_title_subsection">'
+        '<span class="ltx_tag ltx_tag_subsection">5.3 </span>'
+        "Analysis on Reasoning &amp; ICL Tasks.</h3>"
+        + _fig_html(
+            "S5.F3",
+            '<span class="ltx_tag ltx_tag_figure">Figure 3: </span>'
+            "Q&amp;A results; literal &amp;amp; stays escaped once.",
+        )
+    )
+    anchors = anchors_from_html(html)
+    full = _strip_tags(html)
+    assert "## §5.3 Analysis on Reasoning & ICL Tasks" in anchors
+    assert "Analysis on Reasoning & ICL Tasks" in full
+    value = _assert_anchor_is_substring_of_fulltext(anchors, "- Fig. 3 — ", html)
+    assert value == "Q&A results; literal &amp; stays escaped once."
+
+
+def test_label_with_space_before_colon_is_recognised():
+    # Raw-markup collection renders `<span>Figure 1</span>: ` as
+    # "Figure 1 :"; FIGTAB_LABEL_RE must still accept it.
+    html = _fig_html(
+        "S1.F1",
+        '<span class="ltx_tag ltx_tag_figure"><span class="ltx_text">Figure 1</span>: </span>'
+        '<span class="ltx_text">Framework of the proposed approach.</span>',
+    )
+    assert "Figure 1 :" in _strip_tags(html)
+    value = _assert_anchor_is_substring_of_fulltext(anchors_from_html(html), "- Fig. 1 — ", html)
+    assert value == "Framework of the proposed approach."
