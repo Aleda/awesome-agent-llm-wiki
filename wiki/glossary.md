@@ -27,7 +27,7 @@ Group Relative Policy Optimization，DeepSeekMath（2024）提出的强化学习
 
 ## OpenEvolve
 
-DeepMind AlphaEvolve 的开源实现：LLM 反复提出程序改动，评测函数给每个候选程序打分，按进化算法保留和组合得分更高的版本。
+社区开发的开源框架，仿照 DeepMind 的 AlphaEvolve 实现，并非 DeepMind 官方发布。LLM 反复提出程序改动，评测函数给每个候选程序打分，按进化算法保留得分更高的版本并在其上继续变异。
 
 ## SGLang
 
@@ -35,7 +35,7 @@ DeepMind AlphaEvolve 的开源实现：LLM 反复提出程序改动，评测函�
 
 ## SWE-bench
 
-Princeton 团队 2023 年发布的软件工程 benchmark，任务取自真实 GitHub 仓库的 issue：模型要生成代码补丁，用仓库自带的测试判定是否解决。SWE-bench Verified 是经人工核验的 500 题子集。
+Princeton 团队 2023 年发布的软件工程 benchmark，任务取自真实 GitHub 仓库的 issue：模型要生成代码补丁，用当初修复该 issue 的 PR 中的测试判定是否解决。SWE-bench Verified 是 OpenAI 于 2024 年发布的 500 题子集，题目经过人工核验。
 
 ## TerminalBench
 
