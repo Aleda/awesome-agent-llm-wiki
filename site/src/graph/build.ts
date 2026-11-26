@@ -29,6 +29,15 @@
  *   in `prev` (previous build's coordinates) start from their old
  *   position instead of d3's default spiral, so existing nodes barely
  *   move when new content is added (spec §8.1 "新增内容时…已有节点尽量不动").
+ *   A `prev` entry whose `x` or `y` is not `Number.isFinite` (e.g. a
+ *   corrupted positions file round-tripping `Infinity`/`NaN` through
+ *   JSON) is treated as absent, so a bad on-disk value can never poison a
+ *   node's computed position.
+ *
+ * Browser code that only needs the `GNode`/`GEdge`/`GraphData` *types*
+ * must import them with `import type`, not a value import — a plain
+ * import pulls in `d3-force`/`d3-random`, which are build-time-only and
+ * must never reach the browser bundle.
  */
 import { forceSimulation, forceLink, forceCollide } from 'd3-force';
 import { randomLcg } from 'd3-random';
@@ -171,11 +180,20 @@ function explainsOrRespondsTarget(sourceId: PageId, idx: GeneratedIndex): PageId
   return edge?.to;
 }
 
-/** Number of distinct non-`part-of`/`alternative-to` backlink edges into a concept — the "素材数" the concept radius formula counts. */
+/**
+ * Number of distinct source-type (paper/blog/video/podcast) backlinks into
+ * a concept — the "素材数" the concept radius formula counts.
+ * Concept<->concept/topic edges (`part-of`, `alternative-to`, or any edge
+ * whose origin isn't a source page) never count, so they can't inflate
+ * the radius.
+ */
 function conceptSourceCount(conceptId: PageId, idx: GeneratedIndex): number {
   const backlinks = idx.backlinks[conceptId] ?? [];
   const sourceIds = new Set(
-    backlinks.filter((e) => e.rel !== 'part-of' && e.rel !== 'alternative-to').map((e) => e.from),
+    backlinks
+      .filter((e) => e.rel !== 'part-of' && e.rel !== 'alternative-to')
+      .filter((e) => SOURCE_TYPES.has(idx.pages[e.from]?.type as PageType))
+      .map((e) => e.from),
   );
   return sourceIds.size;
 }
@@ -203,6 +221,21 @@ function orgNameOf(info: PageInfo, idx: GeneratedIndex): string | undefined {
 /** Evenly spaced ring angle for the `index`-th of `count` topics, starting at -90deg (top) going clockwise. */
 function ringAngle(index: number, count: number): number {
   return -Math.PI / 2 + (2 * Math.PI * index) / count;
+}
+
+/**
+ * `prev[id]` if both coordinates are finite numbers, else `undefined` — a
+ * corrupt/out-of-range on-disk value is treated the same as a missing
+ * entry (see module doc).
+ */
+function finitePrevPos(
+  prev: Record<PageId, [number, number]>,
+  id: PageId,
+): [number, number] | undefined {
+  const pos = prev[id];
+  if (pos === undefined) return undefined;
+  const [x, y] = pos;
+  return Number.isFinite(x) && Number.isFinite(y) ? pos : undefined;
 }
 
 /**
@@ -327,7 +360,7 @@ export function buildGraph(
     const node = nodeById.get(id)!;
     if (node.fx !== undefined) continue; // root/topic: already fixed
 
-    const prevPos = prev[id];
+    const prevPos = finitePrevPos(prev, id);
     if (prevPos !== undefined) {
       node.x = prevPos[0];
       node.y = prevPos[1];

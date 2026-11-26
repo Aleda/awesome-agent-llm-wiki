@@ -121,6 +121,18 @@ describe('buildGraph on mini-repo', () => {
     }
   });
 
+  test('a prev entry with a non-finite coordinate is ignored, not propagated', () => {
+    const badPrev: Record<string, [number, number]> = {
+      'wiki/concepts/context-compaction': [Infinity, 1],
+      'wiki/topics/context': [NaN, NaN],
+    };
+    const g2 = buildGraph(idx, badPrev);
+    for (const n of g2.nodes) {
+      expect(Number.isFinite(n.x)).toBe(true);
+      expect(Number.isFinite(n.y)).toBe(true);
+    }
+  });
+
   test('root node has no type/topics mismatch and radius 60', () => {
     expect(at('wiki/topics/agent').r).toBe(60);
   });
@@ -436,5 +448,56 @@ describe('buildGraph source attachment fallback', () => {
     const strong = at('wiki/concepts/strong');
     const weak = at('wiki/concepts/weak');
     expect(dist(paper, strong)).toBeLessThan(dist(paper, weak));
+  });
+
+  test('a concept<->concept edge (e.g. extends) never inflates the target concept radius', () => {
+    // wiki/concepts/base is only ever pointed at by another concept, never
+    // by a source page, so its radius must stay at the bare minimum (18),
+    // not grow as if it had a source.
+    const base: GeneratedIndex = {
+      pages: {
+        'wiki/topics/agent': {
+          id: 'wiki/topics/agent',
+          type: 'topic',
+          title: 'Agent',
+          summary: '根主题。',
+          topics: [],
+          by: [],
+          insights: [],
+          root: true,
+          order: 0,
+        },
+        'wiki/concepts/base': {
+          id: 'wiki/concepts/base',
+          type: 'concept',
+          title: 'Base Concept',
+          summary: '只被另一个概念 extends 的概念，没有任何素材指向它。',
+          topics: [],
+          by: [],
+          insights: [],
+          status: 'emerging',
+        },
+        'wiki/concepts/extension': {
+          id: 'wiki/concepts/extension',
+          type: 'concept',
+          title: 'Extension Concept',
+          summary: '扩展 base 的概念。',
+          topics: [],
+          by: [],
+          insights: [],
+          status: 'emerging',
+        },
+      },
+      edges: [{ from: 'wiki/concepts/extension', to: 'wiki/concepts/base', rel: 'extends' }],
+      backlinks: {
+        'wiki/concepts/base': [
+          { from: 'wiki/concepts/extension', to: 'wiki/concepts/base', rel: 'extends' },
+        ],
+      },
+      redirects: {},
+    };
+    const g = buildGraph(base, {});
+    const at = (id: string): GNode => g.nodes.find((n) => n.id === id)!;
+    expect(at('wiki/concepts/base').r).toBe(18);
   });
 });

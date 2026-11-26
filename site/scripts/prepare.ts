@@ -319,7 +319,10 @@ async function clearOutputDirs(siteDir: string): Promise<void> {
  * coordinates. Missing file, unreadable JSON, or anything that doesn't
  * parse to a plain object all resolve to `{}` — a first run, or a corrupt
  * file, should never fail the build; it only means every node starts from
- * its computed initial position instead of a previous one.
+ * its computed initial position instead of a previous one. Per-entry
+ * validation (e.g. a non-finite `x`/`y` from a hand-edited or truncated
+ * file) is `buildGraph`'s job, not this function's — it treats any such
+ * entry as absent.
  */
 async function readPrevPositions(positionsPath: string): Promise<Record<PageId, [number, number]>> {
   let raw: string;
