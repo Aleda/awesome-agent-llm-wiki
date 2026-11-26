@@ -9,3 +9,18 @@
 - `scripts/` — 抓取和 lint 脚本（Python，`uv run`）。
 
 站点地址：<https://aleda.github.io/awesome-agent-llm-wiki/>
+
+## 录入命令
+
+（Task 15–17 完成后回填：论文/blog/视频/podcast 的抓取与入库命令。）
+
+## 本地开发
+
+```bash
+cd site
+npm ci
+npm test              # vitest 单元测试
+npm run e2e           # Playwright e2e（迷你仓库 fixture）
+npm run build         # 构建真实内容站点（含预算检查），输出到 site/dist/
+npx lhci autorun      # Lighthouse 性能门槛（移动端 Performance ≥ 95）
+```

@@ -1,0 +1,83 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      content_root:
+        description: "wiki 内容根目录（相对 site/ 目录），默认 .. 使用仓库自带内容"
+        required: false
+        default: ".."
+        type: string
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CONTENT_ROOT: ${{ inputs.content_root || '..' }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+
+      - uses: astral-sh/setup-uv@v8.3.2
+        with:
+          enable-cache: false # 依赖用 PEP 723 内联声明，无 uv.lock/requirements 可缓存
+
+      # scripts/lint.py 在 Task 15 加入；手动触发指定非默认 content_root 时跳过
+      # （那是在检查别的内容树，不是本仓库的 wiki/，lint 报错对它没有意义）。
+      - name: Lint content (uv run scripts/lint.py --ci)
+        if: ${{ hashFiles('scripts/lint.py') != '' && (inputs.content_root == '' || inputs.content_root == '..') }}
+        run: uv run scripts/lint.py --ci
+
+      - name: Install site dependencies
+        working-directory: site
+        run: npm ci
+
+      - name: Unit tests
+        working-directory: site
+        run: npm test
+
+      - name: Install Playwright browsers
+        working-directory: site
+        run: npx playwright install --with-deps chromium
+
+      - name: E2E tests (mini-repo fixture)
+        working-directory: site
+        run: npm run e2e
+
+      - name: Build site (budget check included)
+        working-directory: site
+        run: npm run build
+
+      - name: Lighthouse CI
+        working-directory: site
+        run: npx lhci autorun
+
+      - uses: actions/upload-pages-artifact@v5
+        with:
+          path: site/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v5
