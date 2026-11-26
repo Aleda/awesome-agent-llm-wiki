@@ -521,3 +521,37 @@ def test_links_in_code_external_and_images_are_ignored(repo):
     assert not has_error(issues, "<slug>")
     assert not has_error(issues, "example.com")
     assert not has_error(issues, "img/nope")
+
+
+# --- 新认知 bullets are one sentence each (warn). ---------------------------
+
+
+@pytest.mark.parametrize(
+    "bullet",
+    [
+        "- 第一句（§3.2）。第二句接着说（Fig. 4）。",
+        "- **第一句（§3.2）！**后面又一句（Fig. 4）",
+        "- 这是问句吗（§3.2）？是的（Fig. 4）。",
+    ],
+)
+def test_two_sentence_insight_is_a_warning(repo, bullet):
+    append_insight(repo, PAPER_MD, bullet)
+    issues = lint(repo, ci=True)
+    assert has_warn(issues, "一句")
+    assert not has_error(issues, "一句")
+
+
+@pytest.mark.parametrize(
+    "bullet",
+    [
+        "- 只有一句，结尾有句号（§3.2）。",
+        "- **只有一句，结尾加粗（§3.2）。**",
+        "- 括号里的句号不算（§3.2，见原文。另见 Fig. 4）。",
+        "- 引号里的句号不算：作者写道“它很好。真的。”（§3.2）",
+        '- 半角引号也不算："x. y。z"（§3.2）',
+        "- 没有结尾标点（§3.2）",
+    ],
+)
+def test_one_sentence_insight_is_fine(repo, bullet):
+    append_insight(repo, PAPER_MD, bullet)
+    assert not has_warn(lint(repo, ci=True), "一句")

@@ -720,6 +720,43 @@ def check_insight_count(pages_by_id: dict[str, Page]) -> list[Issue]:
     return issues
 
 
+INNER_PAREN_RE = re.compile(r"（[^（）]*）")
+QUOTED_RE = re.compile(r"“[^”]*”|‘[^’]*’|「[^」]*」|『[^』]*』|\"[^\"]*\"")
+SENTENCE_END_RE = re.compile(r"[。！？]")
+
+
+def insight_has_two_sentences(bullet: str) -> bool:
+    """Whether a 新认知 bullet has a sentence-final 。！？ before its end.
+    Text inside （…） groups (anchors, asides), quotes and inline code is
+    ignored, as are trailing emphasis markers and the bullet's own final
+    punctuation.
+    """
+    text = INLINE_CODE_RE.sub("", bullet)
+    while True:
+        stripped = INNER_PAREN_RE.sub("", text)
+        if stripped == text:
+            break
+        text = stripped
+    text = QUOTED_RE.sub("", text)
+    text = re.sub(r"[\s*_]+$", "", text)
+    text = re.sub(r"[。！？]+$", "", text)
+    return SENTENCE_END_RE.search(text) is not None
+
+
+def check_insight_one_sentence(pages_by_id: dict[str, Page]) -> list[Issue]:
+    """warn: a source page's 新认知 bullet holds more than one sentence
+    (each bullet should be one judgement, CLAUDE.md 写作约定).
+    """
+    issues: list[Issue] = []
+    for page in pages_by_id.values():
+        if page.fm.get("type") not in SOURCE_TYPES:
+            continue
+        for bullet in insight_bullets(page):
+            if insight_has_two_sentences(bullet):
+                issues.append(("warn", page.relpath, f"新认知 entry is more than one sentence（每条一句）: {bullet[:40]}"))
+    return issues
+
+
 def check_alias_collision(pages_by_id: dict[str, Page]) -> list[Issue]:
     """warn: two concepts share a title or alias, case-insensitively
     (likely duplicate concepts that should be merged via `redirect_to`).
@@ -1072,6 +1109,7 @@ def lint(root: Path, ci: bool = False, today: date | None = None, base: str | No
     issues += check_insights(pages_by_id)
     issues += check_summary_length(pages_by_id)
     issues += check_insight_count(pages_by_id)
+    issues += check_insight_one_sentence(pages_by_id)
     issues += check_alias_collision(pages_by_id)
     issues += check_orphans(pages_by_id, redirects)
     issues += check_index_coverage(pages_by_id, redirects)
