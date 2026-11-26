@@ -36,11 +36,16 @@ const FILTER_TYPES = ['paper', 'blog', 'video', 'podcast'] as const;
     </a>
     <div id="graph-search" class="graph-bar__search">
       <div class="graph-search">
+        <svg class="graph-search__icon" viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6"></circle>
+          <path d="m15 15 5 5"></path>
+        </svg>
         <input
           id="graph-search-input"
           class="graph-search__input"
           type="search"
           placeholder="搜索主题、概念、论文…"
+          data-placeholder-short="搜索"
           aria-label="搜索图谱"
           aria-expanded="false"
           aria-controls="graph-search-listbox"
@@ -293,11 +298,24 @@ const FILTER_TYPES = ['paper', 'blog', 'video', 'podcast'] as const;
     width: 100%;
     max-width: 320px;
   }
+  .graph-search__icon {
+    position: absolute;
+    top: 50%;
+    left: 12px;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    fill: none;
+    stroke: var(--c-muted);
+    stroke-width: 2;
+    stroke-linecap: round;
+    pointer-events: none;
+  }
   .graph-search__input {
     width: 100%;
     height: 40px;
     box-sizing: border-box;
-    padding: 0 14px;
+    padding: 0 14px 0 34px;
     border: 1px solid var(--g-glass-border);
     border-radius: 12px;
     background: var(--g-glass);
@@ -709,12 +727,27 @@ const FILTER_TYPES = ['paper', 'blog', 'video', 'podcast'] as const;
       right: 12px;
       gap: 8px;
     }
+    /* Logo only, so the search box keeps room for its icon and placeholder (V1). */
     .graph-brand {
-      padding: 0 12px 0 8px;
+      padding: 0 9px;
       font-size: 14px;
+    }
+    .graph-brand > span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      overflow: hidden;
+      clip: rect(0 0 0 0);
+      white-space: nowrap;
+    }
+    .graph-bar__search {
+      min-width: 96px;
     }
     .graph-search {
       max-width: none;
+    }
+    .graph-search__input {
+      padding: 0 10px 0 32px;
     }
     .graph-filter__panel {
       width: calc(100vw - 24px);

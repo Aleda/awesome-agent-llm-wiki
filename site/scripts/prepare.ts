@@ -200,7 +200,7 @@ async function copySourceRawFiles(
   }
 }
 
-/** Write `public/data/previews/<PageId>.json` for every non-`raw` page. */
+/** Write `public/data/previews/<PageId>.json` for every non-`raw` page (`topics` as topic titles). */
 async function writePreviews(
   siteDir: string,
   pages: Map<PageId, Page>,
@@ -214,7 +214,9 @@ async function writePreviews(
       type: info.type,
       title: info.title,
       summary: info.summary,
-      topics: info.topics,
+      // Display names, as the cards and the graph use them (V8): a topic
+      // slug without a topic page stays as the slug.
+      topics: info.topics.map((slug) => pageInfos[`wiki/topics/${slug}`]?.title ?? slug),
     };
     if (info.insights.length > 0) preview.insight = info.insights[0];
     const destPath = within(path.join(siteDir, 'public/data/previews'), `${id}.json`);

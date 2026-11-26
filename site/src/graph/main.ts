@@ -461,6 +461,18 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   const fulltext = root.querySelector<HTMLElement>('#graph-search-fulltext');
   const fulltextList = fulltext?.querySelector<HTMLUListElement>('.graph-search__fulltext-list') ?? null;
 
+  // Narrow screens: the long placeholder would be clipped to nothing (V1), use the short one.
+  if (searchInput?.dataset.placeholderShort) {
+    const longPh = searchInput.placeholder;
+    const shortPh = searchInput.dataset.placeholderShort;
+    const narrowMq = media('(max-width: 639.98px)');
+    const applyPh = (): void => {
+      searchInput.placeholder = narrowMq?.matches ? shortPh : longPh;
+    };
+    applyPh();
+    narrowMq?.addEventListener('change', applyPh);
+  }
+
   /** Candidate node list for search: only nodes the current filters make visible (brief: "Entities are searchable only when filters.entities is on" — generalised to every filter, so a hidden source/entity never shows up as a search result either). */
   const searchableNodes = (): GNode[] => data.nodes.filter((n) => visible.has(n.id));
 

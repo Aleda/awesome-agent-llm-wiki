@@ -5,7 +5,7 @@
  *
  * Link shapes produced by `remarkWiki` / `MetaCard` / `SourceCard`:
  * - internal page: `data-preview=".../previews/<PageId>.json"` → JSON
- *   `{ id, type, title, summary, topics, insight? }`.
+ *   `{ id, type, title, summary, topics (topic titles), insight? }`.
  * - glossary term: `data-preview=".../glossary.json" data-term="<slug>"`
  *   → JSON `Record<slug, { term, text }>`.
  * - citation: `class="cite" data-preview=".../anchors/<dir>.json"

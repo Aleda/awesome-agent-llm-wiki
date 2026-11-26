@@ -78,11 +78,14 @@ const commonFields = {
   added: isoDateString,
 };
 
+/** An absolute `http://` or `https://` URL — rendered as a link href, so no `javascript:`/`data:`/relative values. */
+const httpUrl = z.string().refine((v) => /^https?:\/\//i.test(v), { message: 'must start with http:// or https://' });
+
 /** Shared fields across every "source" (素材) page type: paper, blog, video, podcast. */
 const sourceFields = {
   ...commonFields,
   date: isoDateString,
-  url: z.string(),
+  url: httpUrl,
   source_dir: z.string(),
   venue: z.string(),
   by: z.array(bySchema).default([]),
@@ -92,7 +95,7 @@ const sourceFields = {
 const paperSchema = z.object({
   ...sourceFields,
   type: z.literal('paper'),
-  code: z.string().optional(),
+  code: httpUrl.optional(),
   pages: z.number().optional(),
 });
 

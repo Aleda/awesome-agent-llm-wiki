@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <style>
+    .e { stroke: #7c6cd6; stroke-width: 1.6; stroke-linecap: round; fill: none; }
+    .d { fill: #7c6cd6; }
+    .n { fill: #a99cf0; }
+    @media (prefers-color-scheme: dark) {
+      .e { stroke: #b4a9f5; }
+      .d { fill: #b4a9f5; }
+      .n { fill: #d6cffa; }
+    }
+  </style>
+  <path class="e" d="M16 11.5V7.5M19.6 18.2l4.2 2.4M12.4 18.2l-4.2 2.4"/>
+  <path class="d" d="M16 9.6c3.4 3.6 5.4 6.4 5.4 8.9a5.4 5.4 0 0 1-10.8 0c0-2.5 2-5.3 5.4-8.9z"/>
+  <circle class="n" cx="16" cy="5" r="2.6"/>
+  <circle class="n" cx="26" cy="22" r="2.6"/>
+  <circle class="n" cx="6" cy="22" r="2.6"/>
+</svg>

@@ -55,6 +55,15 @@ describe('prepare on mini-repo', () => {
     ).toBe('concept');
   });
 
+  test('preview topics are topic titles, not slugs (V8)', () => {
+    const concept = JSON.parse(read(tmp, 'public/data/previews/wiki/concepts/context-compaction.json'));
+    const topicTitle = index.pages['wiki/topics/context'].title;
+    expect(topicTitle).not.toBe('context');
+    expect(concept.topics).toEqual([topicTitle]);
+    const paper = JSON.parse(read(tmp, 'public/data/previews/wiki/papers/202611-sample-paper.json'));
+    expect(paper.topics).toEqual([topicTitle]);
+  });
+
   test('transcript anchor href points to transcript page', () => {
     expect(
       JSON.parse(read(tmp, 'public/data/anchors/sources/videos/demo/20261101-abc.json'))[

@@ -76,3 +76,17 @@ test('topic root flag and order', () =>
 
 test('raw page needs only title', () =>
   expect(pageSchema.safeParse({ title: 'transcript', type: 'raw' }).success).toBe(true));
+
+describe('url / code must be http(s)', () => {
+  test.each(['javascript:alert(1)', 'data:text/html,x', 'ftp://x', '/relative', 'arxiv.org/abs/1'])(
+    'url %s fails',
+    (url) => expect(pageSchema.safeParse({ ...paper, url }).success).toBe(false),
+  );
+  test.each(['javascript:alert(1)', 'github.com/x'])('code %s fails', (code) =>
+    expect(pageSchema.safeParse({ ...paper, code }).success).toBe(false),
+  );
+  test('http and https pass', () => {
+    expect(pageSchema.safeParse({ ...paper, url: 'http://example.com/a' }).success).toBe(true);
+    expect(pageSchema.safeParse({ ...paper, code: 'https://github.com/x/y' }).success).toBe(true);
+  });
+});
