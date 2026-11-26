@@ -436,13 +436,29 @@ export async function prepare(opts: PrepareOptions): Promise<void> {
   await writePositions(positionsPath, graph);
 }
 
+/**
+ * Choose where `main()` reads/writes graph node positions, given the
+ * `CONTENT_ROOT` env var as seen by the CLI (`undefined` when unset).
+ * "Real content" — any `contentRoot` that resolves to the repo root
+ * (`<siteDir>/..`), covering the unset default, `..`, `../`, and an
+ * absolute path that happens to point at the same place — uses the
+ * committed `data/graph-positions.json` so the real site's layout stays
+ * stable across deploys. Anything else (a fixture or other content tree)
+ * uses a `.generated/` path, so a test/fixture build never touches the
+ * committed real-content positions file.
+ */
+export function defaultPositionsPath(siteDir: string, contentRoot: string | undefined): string {
+  const resolvedRoot = path.resolve(siteDir, contentRoot ?? '..');
+  const repoRoot = path.resolve(siteDir, '..');
+  return resolvedRoot === repoRoot
+    ? path.join(siteDir, 'data/graph-positions.json')
+    : path.join(siteDir, '.generated/graph-positions.json');
+}
+
 async function main(): Promise<void> {
   const root = process.env.CONTENT_ROOT ?? '..';
   const siteDir = '.';
-  const positionsPath =
-    process.env.CONTENT_ROOT === undefined
-      ? path.join(siteDir, 'data/graph-positions.json')
-      : path.join(siteDir, '.generated/graph-positions.json');
+  const positionsPath = defaultPositionsPath(siteDir, process.env.CONTENT_ROOT);
   try {
     await prepare({ root, siteDir, positionsPath });
   } catch (error) {

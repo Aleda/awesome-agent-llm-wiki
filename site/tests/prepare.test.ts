@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { describe, expect, test, beforeAll, afterAll } from 'vitest';
-import { prepare, stripInsight } from '../scripts/prepare';
+import { prepare, stripInsight, defaultPositionsPath } from '../scripts/prepare';
 import { ContentError } from '../src/lib/content-index';
 
 // vitest runs with cwd = site/, fixtures live at the repo root.
@@ -326,5 +326,40 @@ describe('stripInsight', () => {
 
   test('trims surrounding whitespace', () => {
     expect(stripInsight('  text here  ')).toBe('text here');
+  });
+});
+
+describe('defaultPositionsPath', () => {
+  const SITE_DIR = '.';
+
+  test('CONTENT_ROOT unset uses the committed data/graph-positions.json', () => {
+    expect(defaultPositionsPath(SITE_DIR, undefined)).toBe(
+      path.join(SITE_DIR, 'data/graph-positions.json'),
+    );
+  });
+
+  test("CONTENT_ROOT '..' (the documented default) uses data/graph-positions.json", () => {
+    expect(defaultPositionsPath(SITE_DIR, '..')).toBe(
+      path.join(SITE_DIR, 'data/graph-positions.json'),
+    );
+  });
+
+  test("CONTENT_ROOT '../' (trailing slash) also resolves to the repo root", () => {
+    expect(defaultPositionsPath(SITE_DIR, '../')).toBe(
+      path.join(SITE_DIR, 'data/graph-positions.json'),
+    );
+  });
+
+  test('an absolute path that resolves to the repo root also counts as real content', () => {
+    const repoRoot = path.resolve(SITE_DIR, '..');
+    expect(defaultPositionsPath(SITE_DIR, repoRoot)).toBe(
+      path.join(SITE_DIR, 'data/graph-positions.json'),
+    );
+  });
+
+  test('a fixture CONTENT_ROOT uses the .generated/ path, not the committed one', () => {
+    expect(defaultPositionsPath(SITE_DIR, '../tests/fixtures/mini-repo')).toBe(
+      path.join(SITE_DIR, '.generated/graph-positions.json'),
+    );
   });
 });
