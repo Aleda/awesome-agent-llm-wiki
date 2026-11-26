@@ -34,7 +34,7 @@ afterAll(async () => {
 });
 
 /** Add one extra source page (and its edges/backlinks) to a `GeneratedIndex`, for the "existing nodes barely move" test. */
-function withExtraSource(base: GeneratedIndex): GeneratedIndex {
+function withExtraSource(base: GeneratedIndex, topics: string[] = ['context']): GeneratedIndex {
   const id = 'wiki/papers/extra-source';
   const edge: Edge = { from: id, to: 'wiki/concepts/context-compaction', rel: 'supports' };
   return {
@@ -45,7 +45,7 @@ function withExtraSource(base: GeneratedIndex): GeneratedIndex {
         type: 'paper',
         title: 'Extra Source Paper',
         summary: '追加的素材，用于测试新增节点时旧坐标基本不变。',
-        topics: ['context'],
+        topics,
         by: [],
         insights: [],
         date: '2026-11-10',
@@ -119,6 +119,18 @@ describe('buildGraph on mini-repo', () => {
     for (const n of g.nodes) {
       expect(dist(n, g2.nodes.find((m) => m.id === n.id)!)).toBeLessThan(50);
     }
+  });
+
+  test('topic nodes carry n = topic source count (sources only, same rule as 来源数)', () => {
+    expect(at('wiki/topics/context').n).toBe(2);
+    expect(at('wiki/topics/memory').n ?? 0).toBe(0);
+    // root: every source page
+    expect(at('wiki/topics/agent').n).toBe(2);
+    // a source linked to a part-of concept counts even without the topic tag
+    const g2 = buildGraph(withExtraSource(idx, []), {});
+    expect(g2.nodes.find((n) => n.id === 'wiki/topics/context')!.n).toBe(3);
+    // non-topic nodes have no n
+    expect(at('wiki/concepts/context-compaction').n).toBeUndefined();
   });
 
   test('a prev entry with a non-finite coordinate is ignored, not propagated', () => {

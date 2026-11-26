@@ -307,6 +307,26 @@ describe('metaCard', () => {
     expect(rows[1].items[0].text).toBe('2');
   });
 
+  test('topic 来源数 counts only source pages, never concepts tagged with the topic', () => {
+    // context: the paper and the video carry `topics: [context]`; the three
+    // concepts also do, but they are not sources.
+    expect(metaCard('wiki/topics/context', idx)[2].items[0].text).toBe('2');
+  });
+
+  test('topic 来源数 counts a source linked to a part-of concept even without the topic tag', () => {
+    const id = 'wiki/papers/untagged';
+    const edge = { from: id, to: 'wiki/concepts/context-compaction', rel: 'supports' as const };
+    const idxU: GeneratedIndex = {
+      ...idx,
+      pages: {
+        ...idx.pages,
+        [id]: { ...idx.pages[PAPER], id, title: 'Untagged', topics: [] },
+      },
+      edges: [...idx.edges, edge],
+    };
+    expect(metaCard('wiki/topics/context', idxU)[2].items[0].text).toBe('3');
+  });
+
   test('empty topic shows zero concepts and zero sources', () => {
     const rows = metaCard('wiki/topics/memory', idx);
     expect(rows[1].items[0].text).toBe('0');

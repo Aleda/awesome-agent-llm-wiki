@@ -47,6 +47,7 @@ import { randomLcg } from 'd3-random';
 import { REL } from '../lib/schema';
 import type { PageType, Rel } from '../lib/schema';
 import type { GeneratedIndex, PageId, PageInfo } from '../lib/content-index';
+import { topicSourceIds } from '../lib/topic-sources';
 
 /** Sentinel `r` value for a `by` edge (source -> entity): one past the last real `Rel` index, since entities have no `Rel`. */
 export const REL_BY = REL.length;
@@ -62,6 +63,13 @@ export interface GNode {
   o?: string;
   /** Present (and `true`) only on the root topic ("Agent"). */
   root?: true;
+  /**
+   * Topic nodes only: source count shown as "N 份素材" — `topicSourceIds`
+   * (same rule as the topic page's 来源数) for a topic, every source page
+   * for the root. Omitted when 0. Computed here so render.ts stays free of
+   * index lookups.
+   */
+  n?: number;
   x: number;
   y: number;
   r: number;
@@ -478,12 +486,18 @@ export function buildGraph(
     }
   }
 
+  const sourceCount = nodes.filter((n) => SOURCE_TYPES.has(n.t)).length;
+
   // Strip simulation-internal fields (index/vx/vy/fx/fy) from the output nodes.
   const outNodes: GNode[] = nodes.map((n) => {
     const out: GNode = { id: n.id, t: n.t, l: n.l, s: n.s, tp: n.tp, x: n.x, y: n.y, r: n.r };
     if (n.id === rootId) out.root = true;
     if (n.d !== undefined) out.d = n.d;
     if (n.o !== undefined) out.o = n.o;
+    if (n.t === 'topic') {
+      const count = n.id === rootId ? sourceCount : topicSourceIds(n.id, idx).size;
+      if (count > 0) out.n = count;
+    }
     return out;
   });
 

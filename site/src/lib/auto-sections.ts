@@ -25,6 +25,7 @@
  */
 import type { GeneratedIndex, PageId, PageInfo } from './content-index';
 import { REL_LABEL } from './labels';
+import { topicSourceIds } from './topic-sources';
 
 export interface AutoItem {
   date?: string;
@@ -81,26 +82,7 @@ function conceptEvolution(id: PageId, idx: GeneratedIndex): AutoItem[] {
 
 /** `最近进展` for a topic page: distinct sources by direct `topics` membership or via a `part-of` concept, sorted by date desc (ties by title), capped at 10. */
 function topicRecentProgress(id: PageId, idx: GeneratedIndex): AutoItem[] {
-  const topicSlug = id.slice('wiki/topics/'.length);
-
-  const conceptIds = new Set(
-    (idx.edges ?? [])
-      .filter((e) => e.rel === 'part-of' && e.to === id && idx.pages[e.from]?.type === 'concept')
-      .map((e) => e.from),
-  );
-
-  const sourceIds = new Set<PageId>();
-  for (const page of Object.values(idx.pages)) {
-    if (!SOURCE_TYPES.has(page.type)) continue;
-    if (page.topics.includes(topicSlug)) {
-      sourceIds.add(page.id);
-      continue;
-    }
-    const edgesFromPage = (idx.edges ?? []).filter((e) => e.from === page.id);
-    if (edgesFromPage.some((e) => conceptIds.has(e.to))) {
-      sourceIds.add(page.id);
-    }
-  }
+  const sourceIds = topicSourceIds(id, idx);
 
   return [...sourceIds]
     .map((sid) => itemFor(idx, sid))

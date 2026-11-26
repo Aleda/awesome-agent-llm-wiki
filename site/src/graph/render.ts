@@ -463,13 +463,9 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
     seed[i] = hashId(n.id);
     maxR = Math.max(maxR, n.r);
   });
-  // "N 份素材" under the root (all sources) and each topic (sources tagged with it).
-  const sources = nodes.filter((n) => SOURCE_TYPES.has(n.t));
+  // "N 份素材" under the root and each topic: the build-time count `n` (build.ts, same rule as 来源数).
   nodes.forEach((n, i) => {
-    if (kind[i] > KIND_TOPIC) return;
-    const slug = n.id.slice(n.id.lastIndexOf('/') + 1);
-    const count = kind[i] === KIND_ROOT ? sources.length : sources.filter((s) => s.tp.includes(slug)).length;
-    if (count > 0) subLabel[i] = `${count} 份素材`;
+    if (kind[i] <= KIND_TOPIC && n.n) subLabel[i] = `${n.n} 份素材`;
   });
 
   // Edges, bucketed by (colour of the from-node, visibility gate) so each bucket is one stroked path.

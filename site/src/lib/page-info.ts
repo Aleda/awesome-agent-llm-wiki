@@ -12,6 +12,7 @@
 import { REL_LABEL, TYPE_LABEL } from './labels';
 import type { Edge, GeneratedIndex, PageId, PageInfo } from './content-index';
 import { BASE, toRoute } from './routes';
+import { topicSourceIds } from './topic-sources';
 
 export interface CardItem {
   text: string;
@@ -209,9 +210,8 @@ function conceptMetaCard(id: PageId, info: PageInfo, idx: GeneratedIndex): CardR
 /**
  * Left card for a topic page: 定义/概念数/来源数 (ruling R4 — topics have no
  * parent, so they get 概念数 where a concept page would show 所属主题).
- * 概念数 counts concepts `part-of` this topic; 来源数 counts sources whose
- * `topics` include this topic, or that link (via any non-`part-of`/
- * `alternative-to` edge) to a concept that is `part-of` this topic.
+ * 概念数 counts concepts `part-of` this topic; 来源数 is `topicSourceIds`
+ * (source pages tagged with the topic or linked to one of its concepts).
  */
 function topicMetaCard(id: PageId, info: PageInfo, idx: GeneratedIndex): CardRow[] {
   const conceptIds = new Set(
@@ -220,20 +220,7 @@ function topicMetaCard(id: PageId, info: PageInfo, idx: GeneratedIndex): CardRow
       .map((e) => e.from),
   );
 
-  const directSourceIds = new Set(
-    Object.values(idx.pages)
-      .filter((p) => p.topics.includes(id.slice('wiki/topics/'.length)))
-      .map((p) => p.id),
-  );
-
-  const conceptSourceIds = new Set<string>();
-  for (const conceptId of conceptIds) {
-    for (const edge of conceptSourceEdges(idx.backlinks[conceptId] ?? [])) {
-      conceptSourceIds.add(edge.from);
-    }
-  }
-
-  const allSourceIds = new Set([...directSourceIds, ...conceptSourceIds]);
+  const allSourceIds = topicSourceIds(id, idx);
 
   return [
     { label: '定义', items: [{ text: info.summary }], overflow: [] },
