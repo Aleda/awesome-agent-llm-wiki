@@ -60,6 +60,7 @@ USER_AGENT = (
 )
 
 _BLOCK_TAGS = {"p", "br", "li", "div", "figure"}
+_SKIP_TAGS = {"script", "style", "noscript", "template"}
 _COLLAPSE_BLANK_LINES_RE = re.compile(r"\n{3,}")
 
 
@@ -69,8 +70,10 @@ class _ShownotesToText(HTMLParser):
     unescapes entities (handled by `HTMLParser` itself via
     `convert_charrefs=True`), renders `<a href="url">text</a>` as
     `text (url)` when `text != url` (and just `url` when they match, or
-    when there's no link text), and drops `<img>` entirely (no alt-text
-    placeholder — an image conveys nothing as plain text here).
+    when there's no link text), drops `<img>` entirely (no alt-text
+    placeholder — an image conveys nothing as plain text here), and
+    discards the raw content of `<script>`/`<style>`/`<noscript>`/
+    `<template>` entirely rather than inlining it as text (fix round 2).
     """
 
     def __init__(self) -> None:
@@ -78,8 +81,14 @@ class _ShownotesToText(HTMLParser):
         self._parts: list[str] = []
         self._link_href: str | None = None
         self._link_text_parts: list[str] = []
+        self._skip_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag in _SKIP_TAGS:
+            self._skip_depth += 1
+            return
+        if self._skip_depth > 0:
+            return
         if tag in _BLOCK_TAGS:
             self._parts.append("\n")
         if tag == "a":
@@ -88,11 +97,18 @@ class _ShownotesToText(HTMLParser):
             self._link_text_parts = []
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if self._skip_depth > 0:
+            return
         if tag in _BLOCK_TAGS:
             self._parts.append("\n")
         # self-closing <img/> etc: nothing else to do, image dropped.
 
     def handle_endtag(self, tag: str) -> None:
+        if tag in _SKIP_TAGS:
+            self._skip_depth = max(0, self._skip_depth - 1)
+            return
+        if self._skip_depth > 0:
+            return
         if tag in _BLOCK_TAGS:
             self._parts.append("\n")
         if tag == "a":
@@ -106,6 +122,8 @@ class _ShownotesToText(HTMLParser):
             self._link_text_parts = []
 
     def handle_data(self, data: str) -> None:
+        if self._skip_depth > 0:
+            return
         if self._link_href is not None:
             self._link_text_parts.append(data)
         else:

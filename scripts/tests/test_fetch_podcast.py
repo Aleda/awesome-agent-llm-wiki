@@ -108,6 +108,21 @@ def test_shownotes_html_to_text_unescapes_entities():
     assert text == 'A & B <tag> "quoted"'
 
 
+def test_shownotes_html_to_text_skips_script_and_style_content():
+    # Fix round 2: script/style/noscript/template bodies must not be
+    # inlined as plain text.
+    html = (
+        '<p>前言</p><script>alert("xss");var x=1;</script>'
+        "<style>.a{color:red}</style><p>正文</p>"
+    )
+    text = shownotes_html_to_text(html)
+    assert "alert" not in text
+    assert "color" not in text
+    assert "前言" in text and "正文" in text
+    # paragraph separation preserved around the skipped content
+    assert text == "前言\n\n正文"
+
+
 def _extract_fixture_shownotes() -> str:
     import json
     import re
