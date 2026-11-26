@@ -1,0 +1,32 @@
+You don't need long context
+Peter Belcak, Saurav Muralidharan, Jindong Jiang
+
+Abstract. Later tokens are costlier to generate than earlier tokens.
+
+1 Introduction
+Not all tokens are generated equal. Token generation latency and memory
+footprint both grow with the number of tokens in a language model's context.
+
+Figure 1: The cost of long context. Dollar cost of generating 1M output
+tokens on an existing input KV cache as a function of the context window
+size.
+
+2 Methodology
+We use several context-management regimes throughout this work.
+
+3.2 Method
+We describe the compaction method used throughout this section, including
+the end-of-conversation compaction (EoCC) procedure and how it differs from
+full-history accumulation (FHA).
+
+Table 2: Compute per trial
+GPU-hours spent per evaluation trial across the
+long-horizon benchmark suite.
+
+6 Conclusion
+Our experiments show that long contexts are not strictly necessary for
+either long-horizon or long-input tasks when frequent compaction is used.
+
+A What characterizes a good compaction?
+It is a common experience of human-in-the-loop agent-aided SWE workflows
+that after a compaction is performed, certain crucial information disappears.

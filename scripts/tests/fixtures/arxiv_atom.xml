@@ -1,0 +1,58 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/gAVA3wxjLstGA712yG6vkwD0vlE</id>
+  <title>arXiv Query: search_query=&amp;id_list=2611.05306&amp;start=0&amp;max_results=10</title>
+  <updated>2026-11-26T15:04:34Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=&amp;start=0&amp;max_results=10&amp;id_list=2611.05306" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>10</opensearch:itemsPerPage>
+  <opensearch:totalResults>1</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2611.05306v1</id>
+    <title>You don't need long context</title>
+    <updated>2026-11-03T18:17:23Z</updated>
+    <link href="https://arxiv.org/abs/2611.05306v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2611.05306v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Later tokens are costlier to generate than earlier tokens. On frontier open weight models, the disparity in cost may rise to as much as 7x. Through frequent compaction, we show across a broad range of long-horizon and long-input tasks that frontier language models sacrifice little to no task accuracy when maintaining short contexts. We further demonstrate that LLM performance does not collapse on long-horizon software engineering tasks even when taking at most one action per context, and based on that we outline the concept of semantic state space models (SSSMs). Our findings question the need for long-context language models.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-11-03T18:17:23Z</published>
+    <arxiv:comment>Technical report. 31 pages, 8 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Peter Belcak</name>
+    </author>
+    <author>
+      <name>Saurav Muralidharan</name>
+    </author>
+    <author>
+      <name>Jindong Jiang</name>
+    </author>
+    <author>
+      <name>Yonggan Fu</name>
+    </author>
+    <author>
+      <name>Wonmin Byeon</name>
+    </author>
+    <author>
+      <name>Hanrong Ye</name>
+    </author>
+    <author>
+      <name>Ryan Angilly</name>
+    </author>
+    <author>
+      <name>Ali Taghibakhshi</name>
+    </author>
+    <author>
+      <name>Shih-Yang Liu</name>
+    </author>
+    <author>
+      <name>Siru Ouyang</name>
+    </author>
+    <author>
+      <name>Greg Heinrich</name>
+    </author>
+    <author>
+      <name>Pavlo Molchanov</name>
+    </author>
+  </entry>
+</feed>

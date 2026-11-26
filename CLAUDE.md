@@ -271,7 +271,20 @@ schema 写在 `site/src/content.config.ts`，按 `type` 区分必填字段。缺
 
 ## 脚本命令
 
-抓取脚本（`scripts/fetch_paper.py`、`scripts/fetch_blog.py`）待 Task 17 回填。
+`scripts/fetch_paper.py`（arXiv Atom API 取元数据；全文先取 arXiv HTML 版，404 时回退 `v1`，两者都不可用再回退到 PDF 版用 pypdf 抽取文本；`anchors.md` 的章节、图、表编号自动生成）：
+
+```bash
+uv run scripts/fetch_paper.py <arxiv-url-or-id>
+uv run scripts/fetch_paper.py 2611.05306
+uv run scripts/fetch_paper.py https://arxiv.org/abs/2611.05306
+```
+
+`scripts/fetch_blog.py`（trafilatura 抽正文和元数据；`anchors.md` 按章节编号，`meta.yaml`/`.cache/` 全文里的正文按 `§n¶m` 编号；`--org` 是机构 slug，如 `anthropic`）：
+
+```bash
+uv run scripts/fetch_blog.py <url> --org <slug>
+uv run scripts/fetch_blog.py <url> --org <slug> --date 2026-09-18   # 页面元数据没有发布日期时必填
+```
 
 `scripts/fetch_video.py`（yt-dlp 取元数据 + CC 字幕；B 站用 BV 号做 `<id>`；无字幕时加 `--transcribe` 本地转录，转录引擎默认按平台自动选择——macOS arm64 用 mlx-whisper，其余用 faster-whisper，需要用 `--with` 按需注入，见下）：
 
