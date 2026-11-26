@@ -28,13 +28,18 @@ type: raw
 - [连续任务流评测](concepts/streaming-task-evaluation.md) — 把前后依赖的任务按顺序连成一条流让 agent 边做边学，用来测持续学习能力
 - [记忆流与反思](concepts/memory-stream-reflection.md) — 把全部经历按时间记成自然语言流，按近因、重要性、相关性取回，并定期提炼出更高层的反思写回
 - [写入时记忆整合](concepts/memory-consolidation.md) — 新信息写入时取出相似旧记忆，由 LLM 决定新增、改写、合并或删除，让记忆库保持一致
+- [长上下文位置偏差](concepts/long-context-position-bias.md) — 模型用长输入里的信息时，开头和结尾处最好、中间最差，准确率随位置呈 U 形
+- [提示词压缩](concepts/prompt-compression.md) — 在不改目标模型的前提下删减提示词里的 token，只保留目标模型完成任务需要的部分
 
 ## 论文
 
 - [Generative Agents](papers/202304-generative-agents.md) — 用记忆流、反思和规划驱动 25 个 agent 在沙盒小镇里生活，行为比消融版本和众包扮演更可信
+- [Lost in the Middle](papers/202307-lost-in-the-middle.md) — 相关信息放在长输入中间时模型表现最差，呈 U 形曲线；扩了窗口的版本并不更会用上下文
+- [LLMLingua](papers/202310-llmlingua.md) — 用小模型的困惑度由粗到细删减提示词，GSM8K 上压缩 20 倍只掉 1.5 个点，适用于黑盒 API
 - [MemGPT](papers/202310-memgpt.md) — 借操作系统的虚拟内存，让模型用函数调用在上下文和外部存储之间换入换出，突破固定窗口
 - [A-MEM](papers/202502-a-mem.md) — 仿 Zettelkasten 把每条记忆写成带标签的笔记，写入时自动建链并改写相关旧笔记
 - [Mem0](papers/202504-mem0.md) — 从每轮对话抽取事实，由 LLM 对相似旧记忆选择增删改，LOCOMO 上接近全文效果且延迟低得多
+- [ACE](papers/202510-ace.md) — 把上下文当作逐条积累的 playbook，只做增量更新避免整段重写塌缩，AppWorld 和金融任务上超过提示优化基线
 - [Context Language Models](papers/202609-context-language-models.md) — 把实时上下文镜像成文件，让模型用 Bash 自由编辑，长程任务上更准也更省算力
 - [You don't need long context](papers/202611-you-dont-need-long-context.md) — 频繁压缩加按需读取，把上下文压到 16K–48K，长程和长输入任务基本不掉点
 
@@ -57,7 +62,9 @@ type: raw
 - [Jack Clark](entities/jack-clark.md) — Anthropic 联合创始人，长期负责政策工作，撰写 AI 周报 Import AI
 - [Mem0（公司）](entities/mem0.md) — 开发 AI agent 长期记忆层的公司，产品和论文都叫 Mem0
 - [Meta](entities/meta.md) — 美国科技公司，本页同时收录其 Meta Superintelligence Labs 参与的素材
+- [Microsoft](entities/microsoft.md) — 美国科技公司，本页同时收录 Microsoft Research 参与的素材
 - [NVIDIA](entities/nvidia.md) — 美国 GPU 和 AI 计算平台公司，本页同时收录 NVIDIA Research 参与的素材
+- [SambaNova Systems](entities/sambanova.md) — 美国 AI 公司，开发 AI 芯片和大模型推理平台
 - [Stanford University](entities/stanford.md) — 美国斯坦福大学，位于加州斯坦福的私立研究型大学
 - [UC Berkeley](entities/uc-berkeley.md) — 美国加州大学伯克利分校，位于加州伯克利的公立研究型大学
 - [University of Washington](entities/uw.md) — 美国华盛顿大学，位于西雅图的公立研究型大学

@@ -25,6 +25,14 @@ Amdahl 定律：系统中只有一部分被加速时，整体加速受未被加�
 
 NeoCognition 的 continual learning benchmark（截至 2026-11 未公开）：据其联创谷雨介绍，100 道建筑行业会计报账题，每道涉及公司特有的规则和流程，要按顺序连着做，后面的题依赖前面学到的知识。
 
+## AppWorld
+
+Trivedi 等 2024 年发布的 agent benchmark：在模拟的邮件、文件系统等日常应用和 API 环境里，让 agent 写代码调用 API 完成任务，分 test-normal 和 test-challenge 两档难度。指标为 TGC（Task Goal Completion，单个任务完成率）和 SGC（Scenario Goal Completion，同一场景下全部任务都完成的比例），有公开排行榜。
+
+## BBH
+
+BIG-Bench Hard，从 BIG-Bench 中挑出的 23 个较难子任务、约 6,500 道题，常用于评测思维链提示下的语言和符号推理。
+
 ## BrowseComp-Plus
 
 在 OpenAI 的 BrowseComp 基础上构建的深度研究类 benchmark，为问题配了一个固定的文档语料库，agent 只在这个语料库里检索。语料固定后结果可以复现，也能把检索器的效果和 agent 的推理能力分开评估。
@@ -57,6 +65,10 @@ NVIDIA 的桌面级 AI 计算机，128GB 统一内存。You don't need long cont
 
 基于《老友记》《生活大爆炸》《办公室》剧本构建的长期多方对话问答数据集，覆盖 1,300 个会话；A-MEM 论文用它作 LoCoMo 之外的第二个评测集。
 
+## Dynamic Cheatsheet
+
+Suzgun 等 2025 年提出的测试时学习方法：推理中维护一份外部 cheatsheet，积累可复用的策略和代码片段，每一步由 LLM 重写整份 cheatsheet（累积模式 DC-CU）。ACE 论文以它为主要基线。
+
 ## EdgeBench
 
 在真实软件仓库里做长时间优化的 benchmark：agent 在无网络的容器里改进一个代码库，由评测器按 0–100 打分。CLM 论文从中选了 10 个任务，称为 EdgeBench-10，每次运行 12 小时。
@@ -65,13 +77,25 @@ NVIDIA 的桌面级 AI 计算机，128GB 统一内存。You don't need long cont
 
 You don't need long context 论文（arXiv 2611.05306）定义的成本估算：以闭源模型的标价为完整窗口下的价格，按实测吞吐比把价格线性降到 16K 窗口时的约 20%，再按新输入、缓存输入和输出 token 分别计价。它假设服务方按窗口大小部署和定价，不是现行实际价格。
 
+## FiNER
+
+Loukas 等 2022 年发布的金融命名实体识别 benchmark：给 XBRL 财务文档里的 token 标注 139 种细粒度实体类型之一。ACE 论文用它和数值推理任务 Formula 测金融领域的上下文适应。
+
 ## FRAMES
 
 Google 发布的多跳问答 benchmark，824 道题，每题要综合 2 到 15 篇 Wikipedia 文章作答。You don't need long context 论文把它改成 agent 在固定 Wikipedia 语料里逐步检索的形式。
 
+## GEPA
+
+Genetic-Pareto，Agrawal 等 2025 年提出的提示词优化方法：收集执行轨迹，用自然语言反思诊断错误、提出新的完整提示词，再用遗传式 Pareto 搜索保留表现好的候选。ACE 论文的离线基线之一。
+
 ## GRPO
 
 Group Relative Policy Optimization，DeepSeekMath（2024）提出的强化学习算法。对同一个提示采样一组回答，用组内奖励的相对高低估计优势，因此不需要单独训练价值模型（critic）。
+
+## GSM8K
+
+OpenAI 2021 年发布的小学数学应用题数据集，约 8.5K 道题，答案为一个数字，常用 Exact Match 评分，也常用于评测思维链提示。
 
 ## Heilbronn triangle problem
 
@@ -101,6 +125,10 @@ SWE-agent 团队发布的极简软件工程 agent harness：每轮只发一个 B
 
 Xu 等 2021 年发布的多会话对话数据集（MSC），由众包标注者扮演固定人设、跨五次会话聊天；MemGPT 论文在它之上加了第六次会话的问答来测记忆。
 
+## NaturalQuestions-Open
+
+Natural Questions 的开放域版本：问题来自真实的 Google 搜索查询，答案由人工从 Wikipedia 标注，评测时模型只拿到问题本身或检索到的段落。
+
 ## NeoLab
 
 业内对新一批 AI 研究型创业公司的称呼，介于头部前沿实验室和应用型创业公司之间，通常由研究者创办、以研究方向立身。
@@ -112,6 +140,10 @@ Needle in a Haystack，在长篇无关文本的指定深度插入一句目标事
 ## OpenEvolve
 
 社区开发的开源框架，仿照 DeepMind 的 AlphaEvolve 实现，并非 DeepMind 官方发布。LLM 反复提出程序改动，评测函数给每个候选程序打分，按进化算法保留得分更高的版本并在其上继续变异。
+
+## perplexity
+
+困惑度，语言模型对一段文本的预测难度，等于平均负对数似然的指数；某个 token 的困惑度越低，说明模型越能根据前文猜到它。LLMLingua 用小模型的困惑度判断哪些 token 可以删掉。
 
 ## prefix-reuse FLOPs
 
@@ -128,6 +160,10 @@ Anthropic 的网络安全项目，用 Claude Mythos Preview 在重要软件系�
 ## RULER
 
 NVIDIA 发布的合成长上下文测试集，13 个任务，包括多种 needle 检索变体、变量追踪、高频词提取和多跳问答，用来测模型的有效上下文长度。
+
+## Selective-Context
+
+Li 2023 年提出的提示词压缩方法：用小语言模型计算每个词、短语或句子的自信息，删掉信息量低的部分。LLMLingua 的直接前作和主要基线。
 
 ## SGLang
 

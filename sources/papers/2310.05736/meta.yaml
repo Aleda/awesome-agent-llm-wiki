@@ -1,0 +1,15 @@
+id: '2310.05736'
+title: 'LLMLingua: Compressing Prompts for Accelerated Inference of Large Language
+  Models'
+authors:
+- Huiqiang Jiang
+- Qianhui Wu
+- Chin-Yew Lin
+- Yuqing Yang
+- Lili Qiu
+published: '2023-10-09T14:10:21Z'
+updated: '2023-12-06T17:02:25Z'
+abs_url: https://arxiv.org/abs/2310.05736v2
+pdf_url: https://arxiv.org/pdf/2310.05736v2
+primary_category: cs.CL
+comment: Accepted at EMNLP 2023

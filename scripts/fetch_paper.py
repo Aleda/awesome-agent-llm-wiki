@@ -37,6 +37,7 @@ scalar 渲染器）：这里的 `authors` 是列表，PyYAML 的 dumper 原生�
 from __future__ import annotations
 
 import argparse
+import html as html_lib
 import re
 import sys
 import time
@@ -201,6 +202,9 @@ def _strip_tags(html_fragment: str) -> str:
     """
     text = MATH_ALTTEXT_RE.sub(lambda m: m.group(1), html_fragment)
     text = re.sub(r"<[^>]+>", " ", text)
+    # Decode character references (`&amp;` → `&`) once, after tags are
+    # gone, so the cached full text reads like the paper does (task-23b).
+    text = html_lib.unescape(text)
     text = re.sub(r"\s+", " ", text)
     return text.strip()
 
@@ -236,7 +240,7 @@ def _truncate(text: str, max_chars: int) -> str:
 SECTION_LEVEL_CLASS_RE = re.compile(r"\bltx_title_(section|subsection|subsubsection)\b")
 TAG_LABEL_CLASS_RE = re.compile(r"\bltx_tag\b")
 TARGET_FIGURE_CLASS_RE = re.compile(r"\bltx_(?:figure|table)\b")
-FIGTAB_LABEL_RE = re.compile(r"^(Fig(?:ure)?|Tab(?:le)?)\.?\s*(\d+)[:.]?$")
+FIGTAB_LABEL_RE = re.compile(r"^(Fig(?:ure)?|Tab(?:le)?)\.?\s*(\d+)\s*[:.]?$")
 
 
 class _HTMLAnchorWalker(HTMLParser):
@@ -289,10 +293,26 @@ class _HTMLAnchorWalker(HTMLParser):
     )
 
     def __init__(self) -> None:
-        super().__init__(convert_charrefs=True)
+        # convert_charrefs=False plus the raw-markup handlers below: the
+        # parts collected for a heading/caption are the *source HTML* of
+        # that span (tags, entities and all), so `_strip_tags` renders a
+        # caption exactly as it renders the same bytes inside the cached
+        # full text (`_strip_tags(whole_html)`). Collecting decoded text
+        # instead dropped the tag-boundary spaces ("Figure 2 ." in the
+        # full text vs "Figure 2." in the caption), skipped the MathML
+        # alttext substitution ("1/τ1/\tau" vs "1/\tau"), and decoded
+        # `&amp;` on one side only — task-23b, arXiv 2307.03172/2310.05736.
+        super().__init__(convert_charrefs=False)
         self.stack: list[dict] = []
         self.sections: list[tuple[str, str, str]] = []  # (classes, label_html, title_html)
         self.figures: list[tuple[str, str]] = []  # (label_html, rest_html)
+
+    def _append_raw(self, raw: str) -> None:
+        kind, frame, in_label = self._current_target()
+        if kind == "figcaption":
+            frame["cap_parts"].append((in_label, raw))
+        elif kind == "heading":
+            (frame["label_parts"] if in_label else frame["title_parts"]).append(raw)
 
     def _enclosing_target_figure(self) -> dict | None:
         for frame in reversed(self.stack):
@@ -324,9 +344,16 @@ class _HTMLAnchorWalker(HTMLParser):
 
         if tag not in self.VOID_TAGS:
             self.stack.append(frame)
+        self._append_raw(self.get_starttag_text() or "")
 
     def handle_startendtag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        pass  # self-closed/void tags carry no text of interest here
+        self._append_raw(self.get_starttag_text() or "")
+
+    def handle_entityref(self, name: str) -> None:
+        self._append_raw(f"&{name};")
+
+    def handle_charref(self, name: str) -> None:
+        self._append_raw(f"&#{name};")
 
     def _current_target(self) -> tuple[str | None, dict | None, bool]:
         """The innermost open heading or figcaption frame (figcaption takes
@@ -354,11 +381,7 @@ class _HTMLAnchorWalker(HTMLParser):
         return None, None, False
 
     def handle_data(self, data: str) -> None:
-        kind, frame, in_label = self._current_target()
-        if kind == "figcaption":
-            frame["cap_parts"].append((in_label, data))
-        elif kind == "heading":
-            (frame["label_parts"] if in_label else frame["title_parts"]).append(data)
+        self._append_raw(data)
 
     def handle_endtag(self, tag: str) -> None:
         if tag in self.VOID_TAGS:
@@ -370,6 +393,7 @@ class _HTMLAnchorWalker(HTMLParser):
                 break
         if idx is None:
             return  # unmatched close tag — ignore rather than corrupt the stack
+        self._append_raw(f"</{tag}>")
         frame = self.stack[idx]
 
         if frame.get("is_figcaption"):

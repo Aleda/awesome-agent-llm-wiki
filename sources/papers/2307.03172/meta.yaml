@@ -1,0 +1,17 @@
+id: '2307.03172'
+title: 'Lost in the Middle: How Language Models Use Long Contexts'
+authors:
+- Nelson F. Liu
+- Kevin Lin
+- John Hewitt
+- Ashwin Paranjape
+- Michele Bevilacqua
+- Fabio Petroni
+- Percy Liang
+published: '2023-07-06T17:54:11Z'
+updated: '2023-11-20T23:09:34Z'
+abs_url: https://arxiv.org/abs/2307.03172v3
+pdf_url: https://arxiv.org/pdf/2307.03172v3
+primary_category: cs.CL
+comment: 18 pages, 16 figures. Accepted for publication in Transactions of the Association
+  for Computational Linguistics (TACL), 2023
