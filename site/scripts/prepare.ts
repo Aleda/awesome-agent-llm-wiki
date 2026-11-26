@@ -357,8 +357,12 @@ async function writePositions(
   for (const id of Object.keys(positions).sort()) {
     sorted[id] = positions[id];
   }
+  const text = JSON.stringify(sorted, null, 2) + '\n';
+  // Leave an unchanged file alone (no mtime bump, no git churn).
+  const existing = await fs.readFile(positionsPath, 'utf8').catch(() => undefined);
+  if (existing === text) return;
   await fs.mkdir(path.dirname(positionsPath), { recursive: true });
-  await fs.writeFile(positionsPath, JSON.stringify(sorted, null, 2) + '\n', 'utf8');
+  await fs.writeFile(positionsPath, text, 'utf8');
 }
 
 export interface PrepareOptions {

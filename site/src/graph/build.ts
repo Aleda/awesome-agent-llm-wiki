@@ -28,10 +28,14 @@
  *   in world units) so their L2 cards do not pile on top of each other.
  *   Entities keep the small `r + 12`.
  * - Random source `d3.randomLcg(42)`; simulation runs a fixed 300 ticks
- *   (no live timer — this all happens at build time, once). Nodes present
- *   in `prev` (previous build's coordinates) start from their old
- *   position instead of d3's default spiral, so existing nodes barely
- *   move when new content is added (spec §8.1 "新增内容时…已有节点尽量不动").
+ *   (no live timer — this all happens at build time, once). Stability
+ *   across builds (spec §8.1 "新增内容时…已有节点尽量不动"): a node present
+ *   in `prev` (previous build's coordinates) keeps its old position
+ *   exactly (pinned via fx/fy), except a node one layout-link hop from a
+ *   NEW node (one absent from `prev`), which gets a short low-alpha pass
+ *   after the new nodes settle. When there is no new node the simulation
+ *   is skipped and the output equals `prev` (plus the fixed ring), so
+ *   repeated builds never drift.
  *   A `prev` entry whose `x` or `y` is not `Number.isFinite` (e.g. a
  *   corrupted positions file round-tripping `Infinity`/`NaN` through
  *   JSON) is treated as absent, so a bad on-disk value can never poison a
@@ -122,6 +126,9 @@ const L2_CARD_W = 220;
 const L2_SCALE = 2.6;
 const SOURCE_COLLIDE_RADIUS = Math.ceil(L2_CARD_W / L2_SCALE / 2);
 const TICKS = 300;
+/** Starting alpha and tick count for the pass that lets a new node's existing neighbours adjust. */
+const LOW_ALPHA = 0.1;
+const LOW_ALPHA_TICKS = 100;
 const SEED = 42;
 
 const SOURCE_TYPES = new Set<PageType>(['paper', 'blog', 'video', 'podcast']);
@@ -388,7 +395,9 @@ export function buildGraph(
   // Initial positions for free (non-fixed) nodes: concepts start at the mean
   // of their topics' coordinates (or root if none); sources/entities start
   // at their link target's coordinates if known, else root/origin. Nodes
-  // present in `prev` override this with their previous build's position.
+  // with a valid `prev` entry start (and, see below, usually stay) at their
+  // previous build's position.
+  const newIds = new Set<PageId>();
   for (const [id, info] of sortedEntries) {
     const node = nodeById.get(id)!;
     if (node.fx !== undefined) continue; // root/topic: already fixed
@@ -399,6 +408,7 @@ export function buildGraph(
       node.y = prevPos[1];
       continue;
     }
+    newIds.add(id);
 
     if (info.type === 'concept') {
       const topicIds = info.topics.map((slug) => `wiki/topics/${slug}`).filter((t) => nodeById.has(t));
@@ -424,24 +434,61 @@ export function buildGraph(
     node.y = 0;
   }
 
-  // Run the force simulation (build-time only, fixed seed, fixed tick count).
-  const simulation = forceSimulation(nodes)
-    .randomSource(randomLcg(SEED))
-    .force(
-      'link',
-      forceLink<BuildNode, BuildLink>(links)
-        .id((n) => n.id)
-        .distance((l) => l.distance),
-    )
-    .force(
-      'collide',
-      forceCollide<BuildNode>((n) =>
-        SOURCE_TYPES.has(n.t) ? Math.max(SOURCE_COLLIDE_RADIUS, n.r + COLLIDE_PADDING) : n.r + COLLIDE_PADDING,
-      ),
-    )
-    .stop();
+  // Stability (spec §8.1 "已有节点尽量不动"): a node with a valid prev
+  // position is pinned, unless it is one layout-link hop from a new node;
+  // those neighbours are released only for a short low-alpha pass after the
+  // new nodes have settled. With no new node at all, nothing is simulated
+  // and every coordinate is exactly the previous one.
+  if (newIds.size > 0) {
+    const neighbours = new Set<PageId>();
+    for (const l of links) {
+      if (newIds.has(l.source) && !newIds.has(l.target)) neighbours.add(l.target);
+      if (newIds.has(l.target) && !newIds.has(l.source)) neighbours.add(l.source);
+    }
+    const pinned: BuildNode[] = [];
+    for (const node of nodes) {
+      if (node.fx !== undefined || newIds.has(node.id)) continue;
+      node.fx = node.x;
+      node.fy = node.y;
+      pinned.push(node);
+    }
 
-  simulation.tick(TICKS);
+    // Run the force simulation (build-time only, fixed seed, fixed tick count).
+    const simulation = forceSimulation(nodes)
+      .randomSource(randomLcg(SEED))
+      .force(
+        'link',
+        forceLink<BuildNode, BuildLink>(links)
+          .id((n) => n.id)
+          .distance((l) => l.distance),
+      )
+      .force(
+        'collide',
+        forceCollide<BuildNode>((n) =>
+          SOURCE_TYPES.has(n.t) ? Math.max(SOURCE_COLLIDE_RADIUS, n.r + COLLIDE_PADDING) : n.r + COLLIDE_PADDING,
+        ),
+      )
+      .stop();
+
+    simulation.tick(TICKS);
+
+    // Low-alpha pass: let the new nodes' direct neighbours make room.
+    const released = pinned.filter((n) => neighbours.has(n.id));
+    if (released.length > 0 && pinned.length > 0) {
+      for (const node of released) {
+        node.fx = undefined;
+        node.fy = undefined;
+        node.vx = 0;
+        node.vy = 0;
+      }
+      simulation.alpha(LOW_ALPHA).tick(LOW_ALPHA_TICKS);
+    }
+
+    for (const node of pinned) {
+      node.fx = undefined;
+      node.fy = undefined;
+    }
+  }
 
   // Round coordinates to integers (brief Step 3: "坐标取整到整数，以减小体积").
   for (const node of nodes) {

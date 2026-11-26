@@ -133,6 +133,30 @@ describe('buildGraph on mini-repo', () => {
     expect(at('wiki/concepts/context-compaction').n).toBeUndefined();
   });
 
+  test('rebuilding with prev = previous result is byte-identical (no drift)', () => {
+    const prev = Object.fromEntries(g.nodes.map((n) => [n.id, [n.x, n.y] as [number, number]]));
+    const g2 = buildGraph(idx, prev);
+    expect(JSON.stringify(g2)).toBe(JSON.stringify(g));
+    const prev2 = Object.fromEntries(g2.nodes.map((n) => [n.id, [n.x, n.y] as [number, number]]));
+    expect(JSON.stringify(buildGraph(idx, prev2))).toBe(JSON.stringify(g));
+  });
+
+  test('adding one source moves no node farther than one hop from it', () => {
+    const prev = Object.fromEntries(g.nodes.map((n) => [n.id, [n.x, n.y] as [number, number]]));
+    const g2 = buildGraph(withExtraSource(idx), prev);
+    // The extra source's only layout neighbour is context-compaction (its
+    // strongest concept); everything else must stay exactly where it was.
+    const neighbours = new Set(['wiki/concepts/context-compaction']);
+    for (const n of g.nodes) {
+      if (neighbours.has(n.id)) continue;
+      const m = g2.nodes.find((x) => x.id === n.id)!;
+      expect([m.id, m.x, m.y]).toEqual([n.id, n.x, n.y]);
+    }
+    const extra = g2.nodes.find((n) => n.id === 'wiki/papers/extra-source')!;
+    expect(Number.isFinite(extra.x) && Number.isFinite(extra.y)).toBe(true);
+    expect(dist(extra, g2.nodes.find((n) => n.id === 'wiki/concepts/context-compaction')!)).toBeLessThan(300);
+  });
+
   test('a prev entry with a non-finite coordinate is ignored, not propagated', () => {
     const badPrev: Record<string, [number, number]> = {
       'wiki/concepts/context-compaction': [Infinity, 1],

@@ -329,6 +329,24 @@ describe('stripInsight', () => {
   });
 });
 
+describe('prepare positions file', () => {
+  test('a second run with unchanged content does not rewrite graph-positions.json', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-positions-'));
+    try {
+      const positions = path.join(tmp, 'data/graph-positions.json');
+      await prepare({ root: MINI, siteDir: tmp });
+      const first = read(tmp, 'data/graph-positions.json');
+      const old = new Date('2020-01-01T00:00:00Z');
+      await fs.utimes(positions, old, old);
+      await prepare({ root: MINI, siteDir: tmp });
+      expect(read(tmp, 'data/graph-positions.json')).toBe(first);
+      expect((await fs.stat(positions)).mtime.getTime()).toBe(old.getTime());
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('defaultPositionsPath', () => {
   const SITE_DIR = '.';
 
