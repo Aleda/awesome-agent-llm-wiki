@@ -143,6 +143,64 @@ describe('remarkWiki citations', () => {
     expect(await md('观点（[00:01:02]）', 'wiki/concepts/context-compaction.md')).not.toContain(
       'class="cite"',
     ));
+
+  test('same-paren link into sources/ sets the source', async () =>
+    expect(
+      await md(
+        '观点（[转写](../../sources/videos/demo/20261101-abc/transcript.md) [00:01:02]）',
+        'wiki/concepts/context-compaction.md',
+      ),
+    ).toContain('class="cite" href="/awesome-agent-llm-wiki/sources/videos/demo/20261101-abc/transcript/#t-000102"'));
+
+  test('来源 link to a paper anchors page sets the source', async () =>
+    expect(
+      await md(
+        '来源：[锚点](../../sources/papers/2611.00001/anchors.md)\n\n结论（§3.2）',
+        'wiki/concepts/context-compaction.md',
+      ),
+    ).toMatch(/class="cite"[^>]*href="https:\/\/arxiv\.org/));
+});
+
+describe('index pages', () => {
+  // mini-repo has no index pages; inject them into a copy of the generated index.
+  let indexOpts: { indexPath: string; anchorsDir: string };
+
+  beforeAll(async () => {
+    const index = JSON.parse(await fs.readFile(opts.indexPath, 'utf8'));
+    const base = { summary: '', topics: [], by: [], insights: [] };
+    index.pages['wiki/index'] = { ...base, id: 'wiki/index', type: 'raw', title: '首页' };
+    index.pages['wiki/topics/index'] = {
+      ...base,
+      id: 'wiki/topics/index',
+      type: 'topic',
+      title: '主题索引',
+    };
+    const indexPath = path.join(tmp, '.generated/index-with-index-pages.json');
+    await fs.writeFile(indexPath, JSON.stringify(index), 'utf8');
+    indexOpts = { ...opts, indexPath };
+  });
+
+  async function mdIndex(markdown: string, filePath: string): Promise<string> {
+    const file = new VFile({ value: markdown, path: filePath });
+    const out = await unified()
+      .use(remarkParse)
+      .use(remarkWiki, indexOpts)
+      .use(remarkRehype)
+      .use(rehypeStringify)
+      .process(file);
+    return String(out);
+  }
+
+  test('link to wiki/index.md goes to the directory route', async () =>
+    expect(await mdIndex('[h](../index.md)', 'wiki/papers/202611-sample-paper.md')).toContain(
+      'href="/awesome-agent-llm-wiki/wiki/"',
+    ));
+
+  test('index page preview stays keyed by page id', async () => {
+    const html = await mdIndex('[t](../topics/index.md#a)', 'wiki/papers/202611-sample-paper.md');
+    expect(html).toContain('href="/awesome-agent-llm-wiki/wiki/topics/#a"');
+    expect(html).toContain('data-preview="/awesome-agent-llm-wiki/data/previews/wiki/topics/index.json"');
+  });
 });
 
 describe('with remark-directive (as in Starlight)', () => {

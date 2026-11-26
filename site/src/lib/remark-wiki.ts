@@ -25,7 +25,7 @@ import type { Plugin } from 'unified';
 import { visit } from 'unist-util-visit';
 import { findCitations } from './anchors';
 import { resolveLink, termSlug, type GeneratedIndex, type PageId } from './content-index';
-import { BASE, toRoute } from './routes';
+import { BASE, followRedirects, toRoute } from './routes';
 
 export interface RemarkWikiOptions {
   /** Path to `.generated/index.json`; relative paths resolve against `process.cwd()`. */
@@ -100,27 +100,28 @@ type Target =
   | { kind: 'source'; id: PageId; hash: string }
   | { kind: 'missing' };
 
-/** Follow redirects (bounded, cycle-safe) to the final page id. */
-function followRedirects(index: GeneratedIndex, id: PageId): PageId {
-  let current = id;
-  for (let i = 0; i < 32 && index.redirects[current] !== undefined; i++) {
-    current = index.redirects[current];
-  }
-  return current;
-}
-
 /** Classify a link href. `null` means external or non-`.md`: leave untouched. */
 function resolveTarget(index: GeneratedIndex, fromId: PageId, href: string): Target | null {
   const resolved = resolveLink(fromId, href);
   if (resolved === null) return null;
-  const id = followRedirects(index, resolved.id);
+  const id = followRedirects(index.redirects, resolved.id);
   if (index.pages[id] !== undefined) return { kind: 'page', id, hash: resolved.hash };
   if (id.startsWith('sources/')) return { kind: 'source', id, hash: resolved.hash };
   return { kind: 'missing' };
 }
 
+/**
+ * The source_dir a link target belongs to: a wiki page's `sourceKey`, or for
+ * a raw page under `sources/` its directory (`.../transcript`, `.../anchors`
+ * dropped).
+ */
 function sourceOf(index: GeneratedIndex, target: Target | null): string | undefined {
-  return target?.kind === 'page' ? index.pages[target.id].sourceKey : undefined;
+  if (target?.kind === 'page') return index.pages[target.id].sourceKey;
+  if (target?.kind === 'source') {
+    const match = /^(sources\/.+)\/(?:transcript|anchors)$/.exec(target.id);
+    return match?.[1];
+  }
+  return undefined;
 }
 
 interface TextSeg {

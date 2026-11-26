@@ -10,7 +10,7 @@ import {
   ContentError,
   type RepoIndex,
 } from '../src/lib/content-index';
-import { toRoute } from '../src/lib/routes';
+import { followRedirects, redirectRoutes, toRoute } from '../src/lib/routes';
 
 // vitest runs with cwd = site/, fixtures live at the repo root.
 const REPO_ROOT = path.resolve(__dirname, '..', '..');
@@ -322,5 +322,38 @@ describe('termSlug', () => {
 describe('toRoute', () => {
   test('builds route with base and hash', () => {
     expect(toRoute('wiki/concepts/x', '#a')).toBe('/awesome-agent-llm-wiki/wiki/concepts/x/#a');
+  });
+
+  test('strips a trailing /index like Starlight does', () => {
+    expect(toRoute('wiki/index')).toBe('/awesome-agent-llm-wiki/wiki/');
+    expect(toRoute('wiki/topics/index', '#a')).toBe('/awesome-agent-llm-wiki/wiki/topics/#a');
+  });
+
+  test('bare index maps to the base root', () => {
+    expect(toRoute('index')).toBe('/awesome-agent-llm-wiki/');
+  });
+
+  test('does not strip index as part of a longer segment', () => {
+    expect(toRoute('wiki/concepts/reindex')).toBe('/awesome-agent-llm-wiki/wiki/concepts/reindex/');
+  });
+});
+
+describe('redirects', () => {
+  test('followRedirects walks a chain to its end', () => {
+    expect(followRedirects({ a: 'b', b: 'c' }, 'a')).toBe('c');
+    expect(followRedirects({ a: 'b' }, 'x')).toBe('x');
+  });
+
+  test('followRedirects stops on a cycle', () => {
+    expect(['a', 'b']).toContain(followRedirects({ a: 'b', b: 'a' }, 'a'));
+  });
+
+  test('redirectRoutes collapses chains', () => {
+    expect(
+      redirectRoutes({ 'wiki/concepts/a': 'wiki/concepts/b', 'wiki/concepts/b': 'wiki/concepts/c' }),
+    ).toEqual({
+      '/wiki/concepts/a/': '/awesome-agent-llm-wiki/wiki/concepts/c/',
+      '/wiki/concepts/b/': '/awesome-agent-llm-wiki/wiki/concepts/c/',
+    });
   });
 });

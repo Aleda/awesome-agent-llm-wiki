@@ -5,28 +5,22 @@ import starlight from '@astrojs/starlight';
 import { unified } from '@astrojs/markdown-remark';
 import { remarkWiki } from './src/lib/remark-wiki.ts';
 import { rehypeTranscript } from './src/lib/rehype-transcript.ts';
-import { toRoute } from './src/lib/routes.ts';
+import { redirectRoutes } from './src/lib/routes.ts';
 
 const INDEX_PATH = '.generated/index.json';
 
 /**
  * Redirects from merged concept pages (`redirect_to`), read from the index the
- * prepare step writes before `astro build`. Keys are base-relative routes;
- * targets include the base. Missing index (e.g. config loaded on its own) ⇒ none.
+ * prepare step writes before `astro build`. Chains are collapsed (A→B→C emits
+ * A→C). Missing index (e.g. config loaded on its own) ⇒ none.
  */
 function loadRedirects() {
-  let index;
   try {
-    index = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
+    const index = JSON.parse(fs.readFileSync(INDEX_PATH, 'utf8'));
+    return redirectRoutes(index.redirects ?? {});
   } catch {
     return {};
   }
-  /** @type {Record<string, string>} */
-  const redirects = {};
-  for (const [from, to] of Object.entries(index.redirects ?? {})) {
-    redirects[`/${from}/`] = toRoute(/** @type {string} */ (to));
-  }
-  return redirects;
 }
 
 const SIDEBAR_GROUPS = [
