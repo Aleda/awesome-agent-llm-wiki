@@ -1,9 +1,9 @@
 ---
 title: 记忆笔记
 type: concept
-summary: agent 把经验写成自然语言笔记并反复改写，下次任务读回，权重不变地实现持续学习
+summary: 模型把跨任务学到的规则和教训写成笔记并反复改写，让后续任务做得更好
 topics: [continual-learning, memory]
-aliases: [memory notes, Memory Notes, 经验笔记, notes-based continual learning, 记忆笔记式持续学习]
+aliases: [memory notes, 经验笔记, notes-based continual learning, 记忆笔记式持续学习]
 added: 2026-11-27
 status: emerging
 relations:
@@ -15,9 +15,14 @@ relations:
 
 来源：[十字路口 / 对话谷雨](../podcasts/20261108-crossing-gu-yu.md)
 
-agent 在任务中把学到的规则、教训和经验写成自然语言笔记，之后不断改写这些笔记，在后续任务里读回使用；权重不变，经验存在笔记里。它要解决的问题是：部署后的 agent 怎样在不重新训练的情况下，从之前的任务中持续变好。谷雨用的说法是"通过 rewrite memory notes 的方式做 continual learning"（[00:16:18]）。
+模型把跨任务学到的经验和做法，即规则、教训和处理某类事的流程，写成自然语言笔记，并在之后的任务中不断改写，读回使用，目的是让后续任务做得更好；权重不变，经验存在笔记里。它存的是程序性经验，存事实的记忆另归一类。它要解决的问题是：部署后的 agent 怎样在不重新训练的情况下，从之前的任务中持续变好。谷雨用的说法是"通过 rewrite memory notes 的方式做 continual learning"（[00:16:18]）。
 
-[Memory](../topics/memory.md) 方向的检索式记忆主要解决记住并取回事实；记忆笔记的目的是让后续任务做得更好。[模型自管理上下文](model-managed-context.md)里 CLM 的 notes 角色记的是当前任务的进度，任务结束就不再需要，与这里跨任务留存的笔记不同。[Continual Learning](../topics/continual-learning.md) 主题页列出的语言反馈与反思（Reflexion 一类）也把经验写成文字，那条路线的素材待录入后，再判断两者是否应合并为一页。
+边界和计划录入素材的预期关系（素材录入时再按全文确认）：
+
+- 存事实、存观察的记忆不属于这一页。A-MEM 的互链笔记和记忆演化、Mem0 的 ADD/UPDATE/DELETE 操作，归 [Memory](../topics/memory.md) 方向的结构化记忆；它们解决的是记住并取回信息。
+- MemGPT 的自编辑记忆是模型改写自己记忆的一种机制，可以用来实现记忆笔记，但它本身不限定存什么，预计挂为 `applies` 或只在设计空间对照。
+- Reflexion 把失败原因写成文字反思，供同一任务的下一次尝试参考，是在同一任务的多次尝试之间学习；预计挂为 `extends`；它在同一任务的多次尝试之间学习，这里的笔记跨任务留存。
+- [模型自管理上下文](model-managed-context.md)里 CLM 的 notes 角色记的是当前任务的进度，任务结束就不再需要，与这里跨任务留存的笔记不同。
 
 ## 演化
 

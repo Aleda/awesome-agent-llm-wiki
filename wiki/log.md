@@ -34,3 +34,4 @@ type: raw
 2026-11-27 录入素材 · podcasts/20261108-crossing-gu-yu.md
 2026-11-27 新建 · concepts/memory-notes.md、concepts/streaming-task-evaluation.md
 2026-11-27 更新 · concepts/automated-ai-research.md、topics/rsi.md、topics/continual-learning.md、topics/memory.md、glossary.md、index.md
+2026-11-27 更新 · podcasts/20261108-crossing-gu-yu.md、concepts/memory-notes.md、concepts/streaming-task-evaluation.md、topics/continual-learning.md、topics/memory.md、index.md

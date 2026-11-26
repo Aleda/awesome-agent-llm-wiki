@@ -14,7 +14,7 @@ relations:
 
 来源：[十字路口 / 对话谷雨](../podcasts/20261108-crossing-gu-yu.md)
 
-一类 benchmark 设计：任务不独立，按顺序一个接一个做，后面的任务要用到前面任务的反馈和学到的知识，得分反映 agent 在流中边做边学的能力。它要解决的问题是：普通 benchmark 的题目彼此独立，测不出部署后的 agent 能否在生产中持续迭代自己（[00:06:08]–[00:07:10]）。谷雨介绍的 NeoCognition [Apprentice Bench](../glossary.md#apprentice-bench) 是一个例子：100 道建筑行业会计报账题，每道涉及公司特有的规则，要 in a stream 连着做（[00:07:10]）。本库判断：按顺序给出任务、测模型能否在任务序列中持续学习的设置，在 continual learning 研究里早已有之，NeoCognition 的做法是把它放到 agent 的真实业务流程里；这类早期工作的素材待录入。
+一类 benchmark 设计：任务不独立，按顺序一个接一个做，后面的任务要用到前面任务的反馈和学到的知识，得分反映 agent 在流中边做边学的能力。它要解决的问题是：普通 benchmark 的题目彼此独立，测不出部署后的 agent 能否在生产中持续迭代自己（[00:06:08]–[00:07:10]）。谷雨介绍的 NeoCognition [Apprentice Bench](../glossary.md#apprentice-bench) 是一个例子：100 道建筑行业会计报账题，每道涉及公司特有的规则，要 in a stream 连着做（[00:07:10]）。本库判断：这类设置在 Apprentice Bench 之前就有，例如 StreamBench: Towards Benchmarking Continuous Improvement of Language Agents（arXiv 2406.08747，2024-06）让 language agent 在输入流上根据反馈持续改进；NeoCognition 的做法是把它放到垂直行业的业务流程里。StreamBench 的素材待录入。
 
 ## 演化
 
