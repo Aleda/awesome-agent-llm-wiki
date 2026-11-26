@@ -1,0 +1,14 @@
+.cache/
+node_modules/
+site/dist/
+site/.generated/
+site/src/content/docs/
+site/public/data/
+*.m4a
+*.mp3
+*.wav
+*.webm
+.lighthouseci/
+
+# scratch workspace for planning/task tracking, not part of the wiki
+.superpowers/
