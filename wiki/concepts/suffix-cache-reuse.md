@@ -35,6 +35,7 @@ relations:
 
 - 目前只有 CLM 一份素材。作者报告在 BrowseComp-Plus 上，SCR 以标准 SGLang 65.0% 的 FLOPs 达到相同表现（§5.3¶1），并认为旧前缀留下的痕迹有时反而有益（§4.3¶1）。
 - 作者的数据也显示，SCR 的额外复用大半来自对话模板剥离推理 token，而非模型的上下文编辑（Fig. 14），所以它对不编辑上下文的普通推理服务同样适用。
+- 另一种改写上下文的方式付出的缓存代价更大：频繁压缩每次都用"原任务 + 交接摘要"重开对话，只有系统提示和任务这段前缀还能命中。NVIDIA 论文报告，GPT 5.6 Sol 在 SWE-bench Verified 上压缩阈值从 48K/36K 收紧到 16K/12K，缓存命中的输入从 94.2M 降到 45.8M token，基线为 100.2M（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) Tab. 3）。摘要本身是新写的，SCR 能复用的部分很少；这条路线靠缩小部署窗口来省钱（[NVIDIA 论文](../papers/202611-you-dont-need-long-context.md) Fig. 4），见[频繁上下文压缩](frequent-context-compaction.md)。
 
 ## 开放问题
 

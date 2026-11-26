@@ -268,6 +268,7 @@ schema 写在 `site/src/content.config.ts`，按 `type` 区分必填字段。缺
 - CI 里只能查 wiki 实际引用的锚点是否在对应的 `anchors.md` 里登记（不接触 `.cache/`，因为 `.cache/` 不进仓库）。
 - 本地跑 lint 时，如果 `.cache/` 里有全文缓存，还要再查 `anchors.md` 里的章节标题和引用短句是否逐字出现在全文中，确认 `anchors.md` 没有抄错或过时。
 - 录入流程要求**本地 lint 通过后才能提交**。往 `anchors.md` 追加新的引用短句属于"只增"，允许；修改或删除已有条目则不允许——发现错误时另起一条新引用，不改旧的。
+- `sources/seen.txt` 和 `sources/skipped.txt` 遵守同样的只追加规则：只能在末尾加行，不能改动或删除已有行。lint 对这三类文件都做检查。
 
 ## 脚本命令
 

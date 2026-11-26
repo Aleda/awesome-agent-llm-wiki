@@ -18,10 +18,13 @@ type: raw
 - [模型自管理上下文](concepts/model-managed-context.md) — 由执行任务的模型自己决定上下文保留、改写和删除什么，取代外部固定规则
 - [后缀缓存复用](concepts/suffix-cache-reuse.md) — 上下文中段被编辑后，复用未改动后缀的旧 KV cache，只重新计算新插入的部分
 - [成功门控的效率奖励](concepts/success-gated-efficiency-reward.md) — RL 中只在成功轨迹之间按推理成本给效率奖励，避免模型为省算力牺牲正确性
+- [频繁上下文压缩](concepts/frequent-context-compaction.md) — 压缩阈值设得远低于 context window，甚至每个动作后压缩一次，让 agent 始终在短上下文里工作
+- [语义状态空间模型](concepts/semantic-state-space-model.md) — 后训练模型每轮读写一段自然语言状态并只做一个动作，以此取代累积完整对话历史
 
 ## 论文
 
 - [Context Language Models](papers/202609-context-language-models.md) — 把实时上下文镜像成文件，让模型用 Bash 自由编辑，长程任务上更准也更省算力
+- [You don't need long context](papers/202611-you-dont-need-long-context.md) — 频繁压缩加按需读取，把上下文压到 16K–48K，长程和长输入任务基本不掉点
 
 ## Blog
 
@@ -38,4 +41,5 @@ type: raw
 ## 实体
 
 - [Meta](entities/meta.md) — 美国科技公司，本页同时收录其 Meta Superintelligence Labs 参与的素材
+- [NVIDIA](entities/nvidia.md) — 美国 GPU 和 AI 计算平台公司，本页同时收录 NVIDIA Research 参与的素材
 - [University of Washington](entities/uw.md) — 美国华盛顿大学，位于西雅图的公立研究型大学
