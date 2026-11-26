@@ -329,6 +329,34 @@ describe('stripInsight', () => {
   });
 });
 
+describe('prepare glossary slugs', () => {
+  test('glossary.json keys match github-slugger heading ids; fenced examples are not terms', async () => {
+    const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-glossary-'));
+    try {
+      const root = path.join(tmp, 'repo');
+      await fs.cp(MINI, root, { recursive: true });
+      const g = path.join(root, 'wiki/glossary.md');
+      const text = await fs.readFile(g, 'utf8');
+      await fs.writeFile(
+        g,
+        text.replace(
+          '## BrowseComp-Plus',
+          "```\n## <术语>\n\n一两句定义。\n```\n\n## Amdahl's law\n\n加速比上限。\n\n## Claude Opus 5.5\n\n一个模型。\n\n## BrowseComp-Plus",
+        ),
+      );
+      const site = path.join(tmp, 'site');
+      await prepare({ root, siteDir: site });
+      const glossary = JSON.parse(read(site, 'public/data/glossary.json'));
+      expect(Object.keys(glossary).sort()).toEqual(
+        ['amdahls-law', 'browsecomp-plus', 'claude-opus-55', 'grpo'],
+      );
+      expect(glossary['amdahls-law'].text).toBe('加速比上限。');
+    } finally {
+      await fs.rm(tmp, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('prepare positions file', () => {
   test('a second run with unchanged content does not rewrite graph-positions.json', async () => {
     const tmp = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-positions-'));

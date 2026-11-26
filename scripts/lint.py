@@ -23,6 +23,7 @@ import re
 import subprocess
 import sys
 import posixpath
+from urllib.parse import unquote
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -33,6 +34,7 @@ import yaml
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from lib.anchors import find_citations, parse_anchors_md, parse_transcript_anchors, verify_against_fulltext  # noqa: E402
+from lib.slug import slug  # noqa: E402
 
 Level = Literal["error", "warn"]
 Issue = tuple[Level, str, str]
@@ -787,6 +789,81 @@ def build_edges(pages_by_id: dict[str, Page], redirects: dict[str, str]) -> list
     return edges
 
 
+FENCE_RE = re.compile(r"^\s*(```|~~~)")
+INLINE_CODE_RE = re.compile(r"(`+)(?:(?!\1).)+?\1")
+GLOSSARY_ID = "wiki/glossary"
+
+
+def strip_code(body: str) -> str:
+    """`body` with fenced code blocks and inline code spans blanked out, so
+    link examples written as code (e.g. `[术语](../glossary.md#<slug>)`)
+    are not treated as links. Line structure is kept.
+    """
+    out: list[str] = []
+    in_fence = False
+    for line in body.split("\n"):
+        if FENCE_RE.match(line):
+            in_fence = not in_fence
+            out.append("")
+            continue
+        out.append("" if in_fence else INLINE_CODE_RE.sub("", line))
+    return "\n".join(out)
+
+
+def glossary_slugs(pages_by_id: dict[str, Page]) -> set[str]:
+    """github-slugger slugs of every `## <term>` heading in `wiki/glossary.md`
+    (outside fenced code) — the ids Starlight renders, and the keys
+    `site/scripts/prepare.ts` writes to `glossary.json`.
+    """
+    page = pages_by_id.get(GLOSSARY_ID)
+    if page is None:
+        return set()
+    slugs: set[str] = set()
+    for line in strip_code(page.body).split("\n"):
+        match = HEADING_RE.match(line)
+        if match:
+            slugs.add(slug(match.group(1)))
+    return slugs
+
+
+def check_body_links(root: Path, pages_by_id: dict[str, Page], redirects: dict[str, str]) -> list[Issue]:
+    """error: a relative `.md` link in a wiki page body (code excluded)
+    resolves — after following `redirect_to` — to neither an existing wiki
+    page nor an existing file under `sources/`; or it points at
+    `glossary.md#<fragment>` where no glossary heading has that slug.
+    External links and non-`.md` targets (images, assets) are skipped.
+    """
+    issues: list[Issue] = []
+    terms = glossary_slugs(pages_by_id)
+    root_resolved = root.resolve()
+    sources_root = (root_resolved / "sources").resolve()
+
+    for page in sorted(pages_by_id.values(), key=lambda p: p.relpath):
+        for _text, href in extract_md_links(strip_code(page.body)):
+            resolved = resolve_link(page.id, href)
+            if resolved is None:
+                continue
+            target_id, hash_ = resolved
+            if target_id.startswith("wiki/"):
+                final_id = follow_redirects(redirects, target_id)
+                if final_id not in pages_by_id:
+                    issues.append(("error", page.relpath, f"dead link: {href} (no wiki page {final_id})"))
+                    continue
+                if final_id == GLOSSARY_ID and len(hash_) > 1:
+                    fragment = unquote(hash_[1:])
+                    if fragment not in terms:
+                        issues.append(
+                            ("error", page.relpath, f"glossary link has no matching term heading: {href}")
+                        )
+                continue
+            target_path = (root_resolved / f"{target_id}.md").resolve()
+            if not (_is_relative_to(target_path, sources_root) and target_path.is_file()):
+                issues.append(
+                    ("error", page.relpath, f"dead link: {href} (not a wiki page or a file under sources/)")
+                )
+    return issues
+
+
 def check_orphans(pages_by_id: dict[str, Page], redirects: dict[str, str]) -> list[Issue]:
     """warn: a page has no incoming relation edge and is not linked from
     any other wiki page's body. `type: raw` pages, redirect sources (not
@@ -987,6 +1064,7 @@ def lint(root: Path, ci: bool = False, today: date | None = None, base: str | No
         issues.append(("error", relpath, msg))
 
     issues += check_relation_targets(pages_by_id, redirects)
+    issues += check_body_links(root, pages_by_id, redirects)
     issues += check_source_dir_validity(pages_by_id)
     issues += check_anchors_exist(root, pages_by_id, redirects)
     issues += check_cache_fulltext(root, pages_by_id, ci)

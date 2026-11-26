@@ -17,6 +17,7 @@
     "d3-force": "^3.0.0",
     "d3-quadtree": "^3.0.1",
     "d3-random": "^3.0.2",
+    "github-slugger": "^2.0.0",
     "unified": "^11.0.5",
     "remark-parse": "^11.0.0",
     "unist-util-visit": "^5.0.0",

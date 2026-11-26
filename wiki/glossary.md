@@ -11,7 +11,7 @@ type: raw
 一两句定义。
 ```
 
-正文中链接术语用 `[术语](../glossary.md#<slug>)`，`slug` 为术语转小写后，连续的非 `[a-z0-9]` 字符合并为一个 `-` 并去掉首尾 `-`。
+正文中链接术语用 `[术语](../glossary.md#<slug>)`，`slug` 与站点和 GitHub 生成的标题锚点一致（github-slugger 规则）：术语转小写，删掉字母、数字、空格、`-` 以外的字符，每个空格换成 `-`，不合并、不去首尾。例如 `Amdahl's law` → `amdahls-law`，`Claude Opus 5.5` → `claude-opus-55`。
 
 ## AA-LCR
 

@@ -312,10 +312,23 @@ describe('resolveLink', () => {
 });
 
 describe('termSlug', () => {
-  test('lowercase, dashes collapsed and trimmed', () => {
+  test('lowercase, spaces to dashes', () => {
     expect(termSlug('BrowseComp-Plus')).toBe('browsecomp-plus');
     expect(termSlug('Claude Code')).toBe('claude-code');
     expect(termSlug('GRPO')).toBe('grpo');
+  });
+
+  test('matches the heading ids Starlight renders (github-slugger)', () => {
+    expect(termSlug("Amdahl's law")).toBe('amdahls-law');
+    expect(termSlug('Claude Opus 5.5')).toBe('claude-opus-55');
+    expect(termSlug('prefix-reuse FLOPs')).toBe('prefix-reuse-flops');
+    expect(termSlug('上下文 压缩')).toBe('上下文-压缩');
+  });
+
+  test('is idempotent, so a fragment maps to itself', () => {
+    for (const t of ["Amdahl's law", 'Claude Opus 5.5', 'SWE-bench Verified']) {
+      expect(termSlug(termSlug(t))).toBe(termSlug(t));
+    }
   });
 });
 

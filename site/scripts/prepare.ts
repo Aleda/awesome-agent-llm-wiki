@@ -288,8 +288,11 @@ async function writeGlossary(root: string, siteDir: string): Promise<void> {
       glossary[termSlug(currentTerm)] = { term: currentTerm, text };
     };
 
+    let inFence = false;
     for (const line of lines) {
-      const heading = /^##\s+(.+?)\s*$/.exec(line);
+      // A `## <术语>` inside a fenced example is not a term heading.
+      if (/^\s*(```|~~~)/.test(line)) inFence = !inFence;
+      const heading = inFence ? null : /^##\s+(.+?)\s*$/.exec(line);
       if (heading) {
         flush();
         currentTerm = heading[1];

@@ -422,3 +422,102 @@ def test_base_cli_flag(git_repo):
     edit_line(git_repo, "sources/seen.txt", 0, "changed-line")
     _commit_all(git_repo, "edit seen")
     assert main(["--ci", "--root", str(git_repo), "--base", base]) == 1
+
+
+# --- glossary slugs (github-slugger semantics) and dead internal links. ----
+
+
+PAPER_MD = "wiki/papers/202611-sample-paper.md"
+
+
+def add_body(repo: Path, relpath: str, text: str) -> None:
+    path = repo / relpath
+    path.write_text(path.read_text(encoding="utf-8") + "\n" + text + "\n", encoding="utf-8")
+
+
+@pytest.mark.parametrize(
+    ("term", "expected"),
+    [
+        ("BrowseComp-Plus", "browsecomp-plus"),
+        ("Amdahl's law", "amdahls-law"),
+        ("Claude Opus 5.5", "claude-opus-55"),
+        ("prefix-reuse FLOPs", "prefix-reuse-flops"),
+        ("SWE-bench Verified", "swe-bench-verified"),
+        ("上下文 压缩", "上下文-压缩"),
+        ("<术语>", "术语"),
+        ("Café ñ — x", "café-ñ--x"),
+    ],
+)
+def test_slug_matches_github_slugger(term, expected):
+    from lib.slug import slug
+
+    assert slug(term) == expected
+
+
+def test_glossary_fragment_matching_a_heading_is_fine(repo):
+    add_body(repo, PAPER_MD, "见 [GRPO](../glossary.md#grpo)。")
+    assert not has_error(lint(repo, ci=True), "glossary")
+
+
+def test_glossary_fragment_without_heading_is_an_error(repo):
+    add_body(repo, PAPER_MD, "见 [X](../glossary.md#no-such-term)。")
+    assert has_error(lint(repo, ci=True), "no-such-term")
+
+
+def test_glossary_fragment_uses_github_slug_not_dash_collapse(repo):
+    glossary = repo / "wiki/glossary.md"
+    glossary.write_text(
+        glossary.read_text(encoding="utf-8") + "\n## Amdahl's law\n\n加速比上限。\n", encoding="utf-8"
+    )
+    add_body(repo, PAPER_MD, "见 [A](../glossary.md#amdahls-law)。")
+    assert not has_error(lint(repo, ci=True), "amdahls-law")
+    add_body(repo, PAPER_MD, "见 [A](../glossary.md#amdahl-s-law)。")
+    assert has_error(lint(repo, ci=True), "amdahl-s-law")
+
+
+def test_glossary_heading_inside_fence_is_not_a_term(repo):
+    glossary = repo / "wiki/glossary.md"
+    glossary.write_text(
+        glossary.read_text(encoding="utf-8") + "\n```\n## Fenced Term\n```\n", encoding="utf-8"
+    )
+    add_body(repo, PAPER_MD, "见 [F](../glossary.md#fenced-term)。")
+    assert has_error(lint(repo, ci=True), "fenced-term")
+
+
+def test_dead_wiki_link_is_an_error(repo):
+    add_body(repo, PAPER_MD, "见 [没有的概念](../concepts/no-such-concept.md)。")
+    assert has_error(lint(repo, ci=True), "no-such-concept")
+
+
+def test_link_to_redirected_page_is_fine(repo):
+    add_body(repo, PAPER_MD, "见 [旧名](../concepts/old-name.md)。")
+    assert not has_error(lint(repo, ci=True), "old-name")
+
+
+def test_link_to_existing_sources_file_is_fine(repo):
+    add_body(repo, PAPER_MD, "见 [转录](../../sources/videos/demo/20261101-abc/transcript.md#t-000102)。")
+    assert not has_error(lint(repo, ci=True), "transcript")
+
+
+def test_dead_sources_link_is_an_error(repo):
+    add_body(repo, PAPER_MD, "见 [锚点](../../sources/papers/9999.99999/anchors.md)。")
+    assert has_error(lint(repo, ci=True), "9999.99999")
+
+
+def test_link_outside_wiki_and_sources_is_an_error(repo):
+    add_body(repo, PAPER_MD, "见 [规范](../../README.md)。")
+    assert has_error(lint(repo, ci=True), "README")
+
+
+def test_links_in_code_external_and_images_are_ignored(repo):
+    add_body(
+        repo,
+        PAPER_MD,
+        "写法 `[术语](../glossary.md#<slug>)`。\n\n```\n[x](../concepts/nope-fenced.md)\n```\n\n"
+        "外链 [a](https://example.com/x.md)，图片 ![i](../img/nope.md)。",
+    )
+    issues = lint(repo, ci=True)
+    assert not has_error(issues, "nope-fenced")
+    assert not has_error(issues, "<slug>")
+    assert not has_error(issues, "example.com")
+    assert not has_error(issues, "img/nope")

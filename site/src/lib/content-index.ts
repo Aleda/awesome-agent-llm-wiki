@@ -1,3 +1,4 @@
+import { slug as githubSlug } from 'github-slugger';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import matter from 'gray-matter';
@@ -161,14 +162,15 @@ export function resolveLink(
 }
 
 /**
- * Slugify a glossary term: lowercase, collapse runs of non `[a-z0-9]` chars
- * into a single `-`, then trim leading/trailing `-`.
+ * Slugify a glossary term exactly like the heading ids Starlight/Astro (and
+ * GitHub) render: github-slugger's `slug` — lowercase, drop every character
+ * that is not a letter, number, space or `-`, then each space becomes `-`
+ * (`Amdahl's law` -> `amdahls-law`, `Claude Opus 5.5` -> `claude-opus-55`).
+ * Idempotent, so a `glossary.md#<slug>` fragment maps to itself.
+ * `scripts/lib/slug.py` is the Python port used by lint.
  */
 export function termSlug(term: string): string {
-  return term
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+  return githubSlug(term);
 }
 
 /** Recursively collect `.md` file paths under `dir`, relative to `dir`. */

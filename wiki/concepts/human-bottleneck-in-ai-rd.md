@@ -14,7 +14,7 @@ relations:
 
 来源：[Anthropic / When AI builds itself](../blogs/20260918-anthropic-when-ai-builds-itself.md)
 
-写代码、跑实验这些执行环节交给 AI 之后，留在人手里的审查和定方向成为整体研发速度的上限。Anthropic 用 [Amdahl's law](../glossary.md#amdahl-s-law) 描述这种现象：一部分加速后，整体速度受没加速的部分限制（§4¶8）。它要回答两个问题：局部加速为什么不一定变成整体加速；AI 离自主设计自己的后继者还差哪一环（§2¶2）。
+写代码、跑实验这些执行环节交给 AI 之后，留在人手里的审查和定方向成为整体研发速度的上限。Anthropic 用 [Amdahl's law](../glossary.md#amdahls-law) 描述这种现象：一部分加速后，整体速度受没加速的部分限制（§4¶8）。它要回答两个问题：局部加速为什么不一定变成整体加速；AI 离自主设计自己的后继者还差哪一环（§2¶2）。
 
 ## 演化
 

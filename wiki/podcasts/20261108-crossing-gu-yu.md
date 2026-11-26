@@ -67,7 +67,7 @@ relations:
 
 - 谷雨说 2025 年大家还在讨论 Computer Use 的泛化性和可靠性，2025 年底到 2026 年初，操作层面的问题基本解决；他认为主要原因是 coding 训练规模上去了，能力泛化到软件和网页操作（[00:04:05]）。
 - 他认为下一步是认知层面的问题：agent 知道该怎么处理一件事时操作完全能做对，难点在于它不知道每家公司内部的业务流程；这一层与 Computer Use 正交，但最后要落到软件和网页操作上（[00:05:08]）。
-- NeoCognition 成立初期花了几个月解决操作层面的可靠性：让 agent 做几次，挑出做对的那次封装成 reusable skill，为此搭了一条 pipeline；谷雨说现在让 [Claude Opus 5.5](../glossary.md#claude-opus-5-5) 自己实现这套流程很快，而且它会自己纠错（[00:06:08]）。这对应 [Continual Learning](../topics/continual-learning.md#关键争论) 里"积累的技能换了底座模型还有多少用"的问题。
+- NeoCognition 成立初期花了几个月解决操作层面的可靠性：让 agent 做几次，挑出做对的那次封装成 reusable skill，为此搭了一条 pipeline；谷雨说现在让 [Claude Opus 5.5](../glossary.md#claude-opus-55) 自己实现这套流程很快，而且它会自己纠错（[00:06:08]）。这对应 [Continual Learning](../topics/continual-learning.md#关键争论) 里"积累的技能换了底座模型还有多少用"的问题。
 
 ### Apprentice Bench 与连续任务评测
 

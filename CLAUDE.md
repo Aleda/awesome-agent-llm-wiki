@@ -227,7 +227,7 @@ schema 写在 `site/src/content.config.ts`，按 `type` 区分必填字段。缺
 [术语](../glossary.md#<slug>)
 ```
 
-`slug` 的算法：把术语转小写，连续的非 `[a-z0-9]` 字符合并为一个 `-`，再去掉首尾的 `-`（例如 `BrowseComp-Plus` → `browsecomp-plus`，`GRPO` → `grpo`）。这是普通 Markdown 锚点链接，在 GitHub 上也能直接点开跳转。
+`slug` 就是站点（Starlight）和 GitHub 给这个 `## <术语>` 标题生成的锚点 id，算法同 github-slugger：把术语转小写，删掉字母、数字、空格和 `-` 以外的所有字符（如 `'`、`.`、`/`、括号），再把每个空格换成 `-`；不合并连续的 `-`，也不去首尾。例如 `BrowseComp-Plus` → `browsecomp-plus`，`GRPO` → `grpo`，`Amdahl's law` → `amdahls-law`，`Claude Opus 5.5` → `claude-opus-55`。这是普通 Markdown 锚点链接，在 GitHub 上也能直接点开跳转。lint 会核对每个 `glossary.md#<slug>` 都对得上术语表里的一个标题。
 
 ## 悬停批注
 
@@ -257,6 +257,7 @@ schema 写在 `site/src/content.config.ts`，按 `type` 区分必填字段。缺
 
 **lint 检查项**（`scripts/lint.py`，详见「脚本命令」）：
 - schema 和关系目标是否存在（构建期也会查一次）；
+- 正文里的相对 `.md` 链接（跟随 `redirect_to` 后）是否指向存在的 wiki 页或 `sources/` 下存在的文件，`glossary.md#<slug>` 是否对得上术语标题；
 - 锚点在信源里是否真实存在；
 - 孤儿页（没有任何关系或反链指向的页面）；
 - 概念别名冲突（疑似重复概念）；
