@@ -13,8 +13,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -27,6 +25,8 @@ jobs:
       CONTENT_ROOT: ${{ inputs.content_root || '..' }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # lint --base 需要 push 前的提交，做 sources/ 只增不改检查
 
       - uses: actions/setup-node@v6
         with:
@@ -42,7 +42,24 @@ jobs:
       # （那是在检查别的内容树，不是本仓库的 wiki/，lint 报错对它没有意义）。
       - name: Lint content (uv run scripts/lint.py --ci)
         if: ${{ hashFiles('scripts/lint.py') != '' && (inputs.content_root == '' || inputs.content_root == '..') }}
-        run: uv run scripts/lint.py --ci
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          # sources/ 只增不改：push 时和 push 前的提交比；拿不到（首次 push、
+          # 强推后旧提交不可达、手动触发）就和 origin/main 比；都没有就只和 HEAD 比。
+          base=""
+          if [ -n "$BEFORE" ] && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+             && git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            base="$BEFORE"
+          elif git rev-parse --verify --quiet origin/main >/dev/null; then
+            base="origin/main"
+          fi
+          if [ -n "$base" ]; then
+            echo "append-only base: $base"
+            uv run scripts/lint.py --ci --base "$base"
+          else
+            uv run scripts/lint.py --ci
+          fi
 
       - name: Install site dependencies
         working-directory: site
@@ -75,6 +92,9 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
     # The github-pages environment only allows deploys from main, so a
     # workflow_dispatch from another ref builds fine but this job is
     # expected to fail (repo/environment protection rule, not a bug here).

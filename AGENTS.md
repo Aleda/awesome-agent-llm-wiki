@@ -309,9 +309,10 @@ uv run --with faster-whisper scripts/fetch_podcast.py <episode-url> --show <slug
 ```bash
 uv run scripts/lint.py          # 本地跑全部检查，.cache/ 有全文缓存时还会核验 anchors.md
 uv run scripts/lint.py --ci     # CI 用，跳过 .cache/ 全文核验（CI 不拉取全文）
+uv run scripts/lint.py --ci --base <ref>   # sources/ 只增不改检查改为和 <ref> 比，而不是和 HEAD 比
 ```
 
-有 error 级问题时退出码为 1（warn 不影响退出码）。CI（`.github/workflows/pages.yml`）在构建前自动跑 `uv run scripts/lint.py --ci`。
+有 error 级问题时退出码为 1（warn 不影响退出码）。CI（`.github/workflows/pages.yml`）在构建前自动跑 `uv run scripts/lint.py --ci --base <push 前的提交>`；CI 里工作区等于 HEAD，不传 `--base` 时只增不改检查查不出已提交的改动。拿不到 push 前的提交时退回 `origin/main`，再没有就不传。
 
 ## 写作约定
 

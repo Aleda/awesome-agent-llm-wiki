@@ -358,3 +358,67 @@ def test_git_subprocess_helpers_handle_chinese_text(tmp_path):
 
     shown = git_show_head(top, "sources/papers/x/anchors.md")
     assert shown == content
+
+
+# --- `--base <ref>`: the append-only check compares against a base commit,
+# so it still bites in CI where the working tree equals HEAD. -------------
+
+
+def _git(repo: Path, *args: str) -> str:
+    return subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True, encoding="utf-8").stdout.strip()
+
+
+def _commit_all(repo: Path, message: str) -> None:
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-q", "-m", message)
+
+
+def test_base_edit_committed_after_base_is_an_error(git_repo):
+    base = _git(git_repo, "rev-parse", "HEAD")
+    edit_line(git_repo, "sources/papers/2611.00001/anchors.md", 0, "## §3.2 Changed")
+    _commit_all(git_repo, "edit anchors")
+    # HEAD == working tree, so the HEAD comparison sees nothing ...
+    assert not has_error(lint(git_repo, ci=True), "anchors.md")
+    # ... but the base comparison does.
+    assert has_error(lint(git_repo, ci=True, base=base), "anchors.md")
+
+
+def test_base_append_committed_after_base_is_fine(git_repo):
+    base = _git(git_repo, "rev-parse", "HEAD")
+    append(git_repo, "sources/papers/2611.00001/anchors.md", "- Tab. 9 — new")
+    append(git_repo, "sources/seen.txt", "2611.99999")
+    _commit_all(git_repo, "append")
+    issues = lint(git_repo, ci=True, base=base)
+    assert not has_error(issues, "anchors.md")
+    assert not has_error(issues, "seen.txt")
+
+
+def test_base_deletion_committed_after_base_is_an_error(git_repo):
+    base = _git(git_repo, "rev-parse", "HEAD")
+    (git_repo / "sources/videos/demo/20261101-abc/transcript.md").unlink()
+    _commit_all(git_repo, "delete transcript")
+    assert has_error(lint(git_repo, ci=True, base=base), "transcript.md")
+
+
+def test_base_new_file_after_base_can_change_freely(git_repo):
+    base = _git(git_repo, "rev-parse", "HEAD")
+    new = git_repo / "sources/papers/2611.00002/meta.yaml"
+    new.parent.mkdir(parents=True)
+    new.write_text("title: a\n", encoding="utf-8")
+    _commit_all(git_repo, "add source")
+    new.write_text("title: b\n", encoding="utf-8")
+    _commit_all(git_repo, "edit new source")
+    assert not has_error(lint(git_repo, ci=True, base=base), "2611.00002")
+
+
+def test_base_unknown_ref_is_an_error(git_repo):
+    assert has_error(lint(git_repo, ci=True, base="no-such-ref"), "no-such-ref")
+
+
+def test_base_cli_flag(git_repo):
+    from lint import main
+
+    base = _git(git_repo, "rev-parse", "HEAD")
+    edit_line(git_repo, "sources/seen.txt", 0, "changed-line")
+    _commit_all(git_repo, "edit seen")
+    assert main(["--ci", "--root", str(git_repo), "--base", base]) == 1

@@ -10,9 +10,11 @@ append-only `sources/`, relation targets, and content quality against
 `site/src/lib/content-index.ts` — see `scripts/lib/anchors.py` for the
 ported grammar).
 
-Usage: `uv run scripts/lint.py [--ci]` from anywhere; `root` defaults to
+Usage: `uv run scripts/lint.py [--ci] [--base <ref>]` from anywhere; `root` defaults to
 the repo root (two levels up from this file). `--ci` skips the `.cache/`
 full-text verification (that directory is gitignored, so CI never has it).
+`--base <ref>` makes the append-only `sources/` check compare against that
+commit instead of HEAD (CI passes the pushed range's base).
 """
 
 from __future__ import annotations
@@ -545,12 +547,12 @@ def git_toplevel(root: Path) -> str | None:
     return result.stdout.strip()
 
 
-def git_tracked_files(repo_root: str, subpath: str) -> list[str]:
-    """Paths (relative to `repo_root`) of every file tracked at HEAD
-    under `subpath`.
+def git_tracked_files(repo_root: str, subpath: str, ref: str = "HEAD") -> list[str]:
+    """Paths (relative to `repo_root`) of every file tracked at `ref`
+    (default HEAD) under `subpath`.
     """
     result = subprocess.run(
-        ["git", "-C", repo_root, "ls-tree", "-r", "--name-only", "HEAD", "--", subpath],
+        ["git", "-C", repo_root, "ls-tree", "-r", "--name-only", ref, "--", subpath],
         capture_output=True,
         encoding="utf-8",
         errors="replace",
@@ -561,12 +563,24 @@ def git_tracked_files(repo_root: str, subpath: str) -> list[str]:
     return [line for line in result.stdout.splitlines() if line.strip()]
 
 
-def git_show_head(repo_root: str, relpath: str) -> str | None:
-    """`git show HEAD:<relpath>`'s content, or `None` if that path isn't
-    tracked at HEAD.
+def git_ref_exists(repo_root: str, ref: str) -> bool:
+    """Whether `ref` names a commit in the repo at `repo_root`."""
+    result = subprocess.run(
+        ["git", "-C", repo_root, "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        capture_output=True,
+        encoding="utf-8",
+        errors="replace",
+        check=False,
+    )
+    return result.returncode == 0
+
+
+def git_show_head(repo_root: str, relpath: str, ref: str = "HEAD") -> str | None:
+    """`git show <ref>:<relpath>`'s content (default ref HEAD), or `None`
+    if that path isn't tracked at `ref`.
     """
     result = subprocess.run(
-        ["git", "-C", repo_root, "show", f"HEAD:{relpath}"],
+        ["git", "-C", repo_root, "show", f"{ref}:{relpath}"],
         capture_output=True,
         encoding="utf-8",
         errors="replace",
@@ -580,9 +594,14 @@ def git_show_head(repo_root: str, relpath: str) -> str | None:
 APPEND_ONLY_FILENAMES = {"anchors.md", "seen.txt", "skipped.txt"}
 
 
-def check_append_only(root: Path) -> list[Issue]:
-    """error: a file tracked under `sources/` at HEAD has been modified
-    in the working tree. For an append-only file (`anchors.md`, and the
+def check_append_only(root: Path, base: str | None = None) -> list[Issue]:
+    """error: a file tracked under `sources/` at the comparison ref has
+    been modified in the working tree. The ref is HEAD by default (catches
+    uncommitted edits locally); `base` (CLI `--base <ref>`) compares
+    against an earlier commit instead, so CI — where the working tree is
+    HEAD — still catches edits committed since that base. Files absent at
+    the ref are new and never reported; a file present at the ref but
+    missing from the working tree is an error. For an append-only file (`anchors.md`, and the
     two run logs `seen.txt`/`skipped.txt` — `APPEND_ONLY_FILENAMES`, data-
     driven so a new log can be added in one place), only an append is
     allowed — every line HEAD had must still be there, in order, as a
@@ -595,6 +614,10 @@ def check_append_only(root: Path) -> list[Issue]:
     repo_root = git_toplevel(root)
     if repo_root is None:
         return []
+
+    ref = base if base is not None else "HEAD"
+    if base is not None and not git_ref_exists(repo_root, base):
+        return [("error", "sources/", f"--base ref not found: {base}")]
 
     issues: list[Issue] = []
     sources_dir = root / "sources"
@@ -609,7 +632,7 @@ def check_append_only(root: Path) -> list[Issue]:
         else Path("sources")
     )
 
-    for tracked_relpath in git_tracked_files(repo_root, sources_rel_to_repo.as_posix()):
+    for tracked_relpath in git_tracked_files(repo_root, sources_rel_to_repo.as_posix(), ref):
         abs_path = repo_root_path / tracked_relpath
         working_relpath = (
             abs_path.relative_to(root_resolved).as_posix() if _is_relative_to(abs_path, root_resolved) else None
@@ -620,7 +643,7 @@ def check_append_only(root: Path) -> list[Issue]:
             issues.append(("error", working_relpath, "tracked sources/ file was deleted"))
             continue
 
-        head_text = git_show_head(repo_root, tracked_relpath)
+        head_text = git_show_head(repo_root, tracked_relpath, ref)
         if head_text is None:
             continue
         working_text = abs_path.read_text(encoding="utf-8")
@@ -942,10 +965,11 @@ def check_predictions(pages_by_id: dict[str, Page], today: date) -> list[Issue]:
 # ---------------------------------------------------------------------------
 
 
-def lint(root: Path, ci: bool = False, today: date | None = None) -> list[Issue]:
+def lint(root: Path, ci: bool = False, today: date | None = None, base: str | None = None) -> list[Issue]:
     """Run every check against the wiki rooted at `root` (a directory
     containing `wiki/` and `sources/`). `ci` skips the `.cache/` full-text
-    verification. `today` defaults to the real current date; tests pass a
+    verification. `base` is the git ref the append-only check compares
+    against (default HEAD). `today` defaults to the real current date; tests pass a
     fixed value so prediction-expiry checks are deterministic.
     """
     if today is None:
@@ -966,7 +990,7 @@ def lint(root: Path, ci: bool = False, today: date | None = None) -> list[Issue]
     issues += check_source_dir_validity(pages_by_id)
     issues += check_anchors_exist(root, pages_by_id, redirects)
     issues += check_cache_fulltext(root, pages_by_id, ci)
-    issues += check_append_only(root)
+    issues += check_append_only(root, base)
     issues += check_insights(pages_by_id)
     issues += check_summary_length(pages_by_id)
     issues += check_insight_count(pages_by_id)
@@ -985,10 +1009,15 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Lint the wiki for anchors, append-only sources, and content quality.")
     parser.add_argument("--ci", action="store_true", help="skip .cache/ full-text verification")
     parser.add_argument("--root", default=None, help="repo root (default: two levels up from this script)")
+    parser.add_argument(
+        "--base",
+        default=None,
+        help="git ref the append-only sources/ check compares the working tree against (default: HEAD)",
+    )
     args = parser.parse_args(argv)
 
     root = Path(args.root) if args.root else Path(__file__).resolve().parent.parent
-    issues = lint(root, ci=args.ci)
+    issues = lint(root, ci=args.ci, base=args.base)
 
     for level, path, msg in issues:
         icon = "🔴" if level == "error" else "🟡"
