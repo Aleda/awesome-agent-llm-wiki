@@ -271,7 +271,24 @@ schema 写在 `site/src/content.config.ts`，按 `type` 区分必填字段。缺
 
 ## 脚本命令
 
-抓取脚本（`scripts/fetch_paper.py`、`scripts/fetch_blog.py`、`scripts/fetch_video.py`、`scripts/fetch_podcast.py`）待 Task 16–17 回填，当前仓库骨架里尚未实现，调用方式以那几个任务完成后的说明为准。
+抓取脚本（`scripts/fetch_paper.py`、`scripts/fetch_blog.py`）待 Task 17 回填。
+
+`scripts/fetch_video.py`（yt-dlp 取元数据 + CC 字幕；B 站用 BV 号做 `<id>`；无字幕时加 `--transcribe` 本地转录，转录引擎默认按平台自动选择——macOS arm64 用 mlx-whisper，其余用 faster-whisper，需要用 `--with` 按需注入，见下）：
+
+```bash
+uv run scripts/fetch_video.py <video-url> --channel <slug>                 # 有 CC 字幕
+uv run --with mlx-whisper scripts/fetch_video.py <url> --channel <slug> --transcribe      # macOS，无字幕
+uv run --with faster-whisper scripts/fetch_video.py <url> --channel <slug> --transcribe   # Linux/CUDA，无字幕
+```
+
+`scripts/fetch_podcast.py`（小宇宙单集页面无公开 API，从 `<script id="__NEXT_DATA__">` 取单集数据，音频下载后本地转录；yt-dlp 不支持小宇宙）：
+
+```bash
+uv run --with mlx-whisper scripts/fetch_podcast.py <episode-url> --show <slug>
+uv run --with faster-whisper scripts/fetch_podcast.py <episode-url> --show <slug> --engine faster
+```
+
+两者都支持 `--force`（覆盖已存在的 `transcript.md`，只用于从未提交过的转录稿；`sources/` 本来只增不改）和 `--keep-audio`（转录成功后保留下载的音频，默认会删除）。
 
 `scripts/lint.py`（PEP 723 内联依赖，`uv` 自动安装）：
 

@@ -15,9 +15,18 @@
 ```bash
 uv run scripts/lint.py          # 本地跑全部 lint 检查
 uv run scripts/lint.py --ci     # CI 用，跳过 .cache/ 全文核验
+
+# 视频（yt-dlp，B 站用 BV 号）：优先用 CC 字幕，无字幕时 --transcribe 本地转录
+uv run scripts/fetch_video.py <video-url> --channel <slug>
+uv run --with mlx-whisper scripts/fetch_video.py <url> --channel <slug> --transcribe      # macOS
+uv run --with faster-whisper scripts/fetch_video.py <url> --channel <slug> --transcribe   # Linux/CUDA
+
+# 播客（小宇宙单集页面 __NEXT_DATA__，音频下载后本地转录）
+uv run --with mlx-whisper scripts/fetch_podcast.py <episode-url> --show <slug>
+uv run --with faster-whisper scripts/fetch_podcast.py <episode-url> --show <slug> --engine faster
 ```
 
-（论文/blog/视频/podcast 的抓取与入库命令：Task 16–17 完成后回填。）
+（论文/blog 的抓取与入库命令：Task 17 完成后回填。）
 
 ## 本地开发
 
