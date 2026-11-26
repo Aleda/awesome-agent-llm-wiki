@@ -11,7 +11,8 @@ import { prepare } from '../scripts/prepare';
 import type { GNode, GraphData } from '../src/graph/build';
 import type { PageId } from '../src/lib/content-index';
 import { buildQuadtree } from '../src/graph/render';
-import { CARD_H, CARD_W, LEVEL_SCALE } from '../src/graph/lod';
+import { CARD_H, CARD_W, LEVEL_SCALE, MIN_SCREEN_R } from '../src/graph/lod';
+import { initialCamera, worldToScreen, K_MIN } from '../src/graph/camera';
 import { clickAction, hitTest, neighbors, relatedSources } from '../src/graph/interaction';
 import { decodeView, encodeView } from '../src/graph/hash';
 
@@ -193,11 +194,60 @@ describe('encodeView / decodeView', () => {
     expect(decodeView('#node=wiki/topics/context', ids)).toEqual({ node: 'wiki/topics/context', z: 0 });
     expect(decodeView('#node=wiki/topics/context&z=abc', ids)).toEqual({ z: 0 });
   });
+  test('f=0 marks a view without focus and round-trips (Ruling R17)', () => {
+    expect(encodeView({ node: 'wiki/topics/context', z: 1, f: 0 })).toBe('#node=wiki/topics/context&z=1&f=0');
+    expect(decodeView('#node=wiki/topics/context&z=1&f=0', ids)).toEqual({ node: 'wiki/topics/context', z: 1, f: 0 });
+    expect(decodeView(encodeView({ node: 'wiki/concepts/context-compaction', z: 2, f: 0 }), ids)).toEqual({
+      node: 'wiki/concepts/context-compaction',
+      z: 2,
+      f: 0,
+    });
+    // Any other f value is ignored (focused view); f=0 with an unknown node is still L0.
+    expect(decodeView('#node=wiki/topics/context&z=1&f=1', ids)).toEqual({ node: 'wiki/topics/context', z: 1 });
+    expect(decodeView('#node=nope&z=1&f=0', ids)).toEqual({ z: 0 });
+  });
   test('empty and node-less hashes are the L0 view', () => {
     expect(decodeView('', ids)).toEqual({ z: 0 });
     expect(decodeView('#', ids)).toEqual({ z: 0 });
     expect(decodeView('#z=2', ids)).toEqual({ z: 0 });
     expect(decodeView('#node=&z=1', ids)).toEqual({ z: 0 });
     expect(decodeView('#node=nope&z=2', ids)).toEqual({ z: 0 });
+  });
+});
+
+describe('initialCamera (Ruling R16)', () => {
+  const R = 44;
+  // Topic label metrics from render.ts: label starts 8 px below the droplet, "N 份素材" line ends ~46 px below it.
+  const LABEL_BELOW = 8 + 23 + 15;
+  const check = (w: number, h: number, top: number) => {
+    const c = initialCamera({ w, h, top }, R);
+    const k = c.k;
+    const [cx, cy] = worldToScreen(c, [0, 0]);
+    expect(cx).toBeCloseTo(w / 2);
+    expect(cy).toBeCloseTo((top + h) / 2);
+    const rScreen = Math.max(R * k, MIN_SCREEN_R.topic);
+    const [, topY] = worldToScreen(c, [0, -1000]);
+    const [, botY] = worldToScreen(c, [0, 1000]);
+    expect(topY - rScreen).toBeGreaterThanOrEqual(top);
+    expect(botY + rScreen + LABEL_BELOW).toBeLessThanOrEqual(h);
+    return c;
+  };
+  test('formula: min(0.35, (min(w, h - top) / 2 - 80) / (1000 + R))', () => {
+    expect(initialCamera({ w: 1280, h: 720, top: 52 }, R).k).toBeCloseTo((668 / 2 - 80) / 1044);
+    expect(initialCamera({ w: 4000, h: 3000, top: 52 }, R).k).toBe(LEVEL_SCALE[0]);
+  });
+  test('the ring and its labels fit below the bar on desktop and phones', () => {
+    check(1280, 720, 52);
+    check(1440, 900, 52);
+    check(1280, 800, 52);
+    check(375, 667, 52);
+  });
+  test('centre defaults to the origin and follows a given root position', () => {
+    const c = initialCamera({ w: 800, h: 600, top: 0 }, R, [100, -50]);
+    expect(worldToScreen(c, [100, -50])[0]).toBeCloseTo(400);
+    expect(worldToScreen(c, [100, -50])[1]).toBeCloseTo(300);
+  });
+  test('tiny viewports clamp to K_MIN instead of going negative', () => {
+    expect(initialCamera({ w: 100, h: 100, top: 52 }, R).k).toBe(K_MIN);
   });
 });

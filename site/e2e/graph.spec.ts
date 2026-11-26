@@ -8,6 +8,12 @@ import { expect, test, type Page } from '@playwright/test';
 const HOME = '/awesome-agent-llm-wiki/';
 const app = (page: Page) => page.locator('#graph-app');
 
+interface Box { id: string; x0: number; y0: number; x1: number; y1: number }
+type Debug = { screenOf(id: string): [number, number] | null; labelBoxes(): Box[]; barBottom(): number };
+/** Screen position of a node via the `graphDebug` test hook on `#graph-app` (main.ts). */
+const screenOf = (page: Page, id: string) =>
+  page.evaluate((nid) => (document.getElementById('graph-app') as unknown as { graphDebug: Debug }).graphDebug.screenOf(nid), id);
+
 function collectErrors(page: Page): string[] {
   const errors: string[] = [];
   page.on('console', (m) => {
@@ -52,6 +58,9 @@ test('an unknown node in the hash falls back to L0 without console errors', asyn
 });
 
 test('pressing + three times raises the level, 0 resets it', async ({ page }) => {
+  // At 1440×900 the R16 overview is k ≈ 0.33, so three ×1.25 steps cross L1_AT (0.6).
+  // (At 1280×720 it is k ≈ 0.24 and needs five.)
+  await page.setViewportSize({ width: 1440, height: 900 });
   await page.goto(HOME);
   await expect(app(page)).toHaveAttribute('data-ready', '');
   await expect(app(page)).toHaveAttribute('data-level', '0');
@@ -64,15 +73,9 @@ test('pressing + three times raises the level, 0 resets it', async ({ page }) =>
 test('clicking a topic flies to L1 and Back returns to the overview', async ({ page }) => {
   await page.goto(HOME);
   await expect(app(page)).toHaveAttribute('data-ready', '');
-  // Context topic is straight above Agent on the ring (world (0, -1000)); find it on screen.
-  const pos = await page.evaluate(() => {
-    const c = document.querySelector('canvas.graph-canvas') as HTMLCanvasElement;
-    const w = c.clientWidth;
-    const h = c.clientHeight;
-    const k = Math.min(0.35, Math.min(w, h) / 2 / 1150);
-    return { x: w / 2, y: h / 2 - 1000 * k };
-  });
-  await page.mouse.click(pos.x, pos.y);
+  const pos = await screenOf(page, 'wiki/topics/context');
+  expect(pos).not.toBeNull();
+  await page.mouse.click(pos![0], pos![1]);
   await expect(app(page)).toHaveAttribute('data-focus', 'wiki/topics/context');
   await expect(app(page)).toHaveAttribute('data-level', '1');
   await expect(page).toHaveURL(/#node=wiki\/topics\/context&z=1$/);
@@ -105,4 +108,57 @@ test('theme toggle flips data-theme and persists it', async ({ page }) => {
   expect(await page.evaluate(() => localStorage.getItem('starlight-theme'))).toBe(after);
   await page.reload();
   expect(await page.evaluate(() => document.documentElement.dataset.theme)).toBe(after);
+});
+
+for (const size of [
+  { width: 1280, height: 720 },
+  { width: 375, height: 667 },
+]) {
+  test(`initial view keeps every topic label inside the canvas below the bar at ${size.width}×${size.height}`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto(HOME);
+    await expect(app(page)).toHaveAttribute('data-ready', '');
+    const topics = ['wiki/topics/agent', 'wiki/topics/context', 'wiki/topics/memory'];
+    await expect
+      .poll(() =>
+        page.evaluate(() => (document.getElementById('graph-app') as unknown as { graphDebug: Debug }).graphDebug.labelBoxes().map((b) => b.id)),
+      )
+      .toEqual(expect.arrayContaining(topics));
+    const { boxes, top } = await page.evaluate(() => {
+      const d = (document.getElementById('graph-app') as unknown as { graphDebug: Debug }).graphDebug;
+      return { boxes: d.labelBoxes(), top: d.barBottom() };
+    });
+    expect(top).toBeGreaterThan(0);
+    for (const b of boxes.filter((x) => topics.includes(x.id))) {
+      expect(b.x0, b.id).toBeGreaterThanOrEqual(0);
+      expect(b.x1, b.id).toBeLessThanOrEqual(size.width);
+      expect(b.y0, b.id).toBeGreaterThanOrEqual(top);
+      expect(b.y1, b.id).toBeLessThanOrEqual(size.height);
+    }
+  });
+}
+
+test('after closing the panel, reload keeps the view but does not reopen the panel (f=0)', async ({ page }) => {
+  await page.goto(`${HOME}#node=wiki/concepts/context-compaction&z=2`);
+  await expect(page.locator('.graph-panel')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page).toHaveURL(/#node=wiki\/concepts\/context-compaction&z=2&f=0$/);
+  await page.reload();
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  await expect(app(page)).toHaveAttribute('data-level', '2');
+  await expect(app(page)).toHaveAttribute('data-focus', '');
+  await expect(page.locator('.graph-panel')).toBeHidden();
+});
+
+test('panning with nothing focused writes an unfocused (f=0) hash', async ({ page }) => {
+  await page.goto(HOME);
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  await page.mouse.move(400, 400);
+  await page.mouse.down();
+  await page.mouse.move(460, 430, { steps: 5 });
+  await page.mouse.up();
+  await expect(page).toHaveURL(/&f=0$/);
+  await page.reload();
+  await expect(app(page)).toHaveAttribute('data-ready', '');
+  await expect(page.locator('.graph-panel')).toBeHidden();
 });

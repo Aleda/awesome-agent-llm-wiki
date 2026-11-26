@@ -8,8 +8,8 @@
  * build.ts, so d3-force and zod stay out of the bundle.
  *
  * Camera rules (binding, task 12):
- * - Initial view: Agent centred at k = min(LEVEL_SCALE[0], min(w, h) / 2 / 1150);
- *   a valid hash instead fits its node at its level.
+ * - Initial view: `initialCamera` (Ruling R16), the topic ring fitted in
+ *   screen px below the top bar; a valid hash instead fits its node at its level.
  * - Wheel zooms by exp(-deltaY · 0.0015) about the cursor; drag pans with a
  *   4 px click threshold; two pointers pinch; `+`/`=` and `-` zoom ×/÷1.25
  *   about the view centre, `0` resets, Escape closes the panel.
@@ -22,7 +22,7 @@ import type { GNode, GraphData } from './build';
 import type { PageId } from '../lib/content-index';
 import { BASE, toRoute } from '../lib/routes';
 import { TYPE_LABEL } from '../lib/labels';
-import { type Camera, K_MAX, K_MIN, fitNode, flyTo, screenToWorld, worldToScreen, zoomAt } from './camera';
+import { type Camera, fitNode, flyTo, initialCamera, screenToWorld, worldToScreen, zoomAt } from './camera';
 import { LEVEL_SCALE, isRootNode, levelOf } from './lod';
 import { buildQuadtree, createLoop, createRenderer, type Renderer, type ViewState } from './render';
 import { clickAction, hitTest, isSource, neighbors, relatedSources } from './interaction';
@@ -37,8 +37,6 @@ const HASH_DELAY_MS = 300;
 const WHEEL_RATE = 0.0015;
 /** Trackpad pinch arrives as ctrl+wheel with ~10× smaller deltas than a mouse wheel. */
 const PINCH_WHEEL_BOOST = 10;
-/** World radius that must fit the initial view: the 1000-radius topic ring plus topic droplets and labels. */
-const RING_FIT = 1150;
 /** Below this width the panel is a bottom sheet. */
 const NARROW = 640;
 const THEME_KEY = 'starlight-theme';
@@ -127,10 +125,17 @@ const insights = new Map<PageId, Promise<string | null>>();
 function loadInsight(id: PageId): Promise<string | null> {
   let p = insights.get(id);
   if (!p) {
+    // A failed request (network error, non-2xx, bad JSON) is dropped from the cache so a later open retries.
     p = fetch(encodeURI(`${BASE}/data/previews/${id}.json`))
-      .then((r) => (r.ok ? r.json() : null))
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json();
+      })
       .then((j: { insight?: unknown } | null) => (j && typeof j.insight === 'string' && j.insight ? j.insight : null))
-      .catch(() => null);
+      .catch(() => {
+        insights.delete(id);
+        return null;
+      });
     insights.set(id, p);
   }
   return p;
@@ -255,10 +260,8 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   let vh = Math.max(1, root.clientHeight || window.innerHeight);
   const barH = (): number => (bar ? bar.offsetTop + bar.offsetHeight : 0);
 
-  const initialCam = (): Camera => {
-    const k = Math.min(K_MAX, Math.max(K_MIN, Math.min(LEVEL_SCALE[0], Math.min(vw, vh) / 2 / RING_FIT)));
-    return { x: centreNode.x - vw / (2 * k), y: centreNode.y - vh / (2 * k), k };
-  };
+  const maxTopicR = data.nodes.reduce((m, n) => (n.t === 'topic' && !isRootNode(n) ? Math.max(m, n.r) : m), 0);
+  const initialCam = (): Camera => initialCamera({ w: vw, h: vh, top: barH() }, maxTopicR, [centreNode.x, centreNode.y]);
   /** `fitNode` into the area below the top bar and beside the panel. */
   const fitView = (n: GNode, z: Level): Camera => {
     const top = barH();
@@ -270,6 +273,8 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   let cam: Camera = { x: 0, y: 0, k: LEVEL_SCALE[0] };
   let flight: Flight | null = null;
   let focus: PageId | undefined;
+  /** Node the view was last centred on (focus, or an f=0 view); names the hash while it stays on screen after the panel closes. */
+  let anchor: PageId | undefined;
   let hover: PageId | undefined;
   let dragging = false;
   let movingUntil = 0;
@@ -288,6 +293,7 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   };
   const setFocus = (id: PageId | undefined): void => {
     focus = id;
+    if (id !== undefined) anchor = id;
     state.focus = id;
     root.dataset.focus = id ?? '';
     dirty = true;
@@ -327,8 +333,10 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   };
   /** The node a settled view is "about": the focus if still on screen, else the nearest node drawn at this level. */
   const viewNode = (z: Level): GNode | undefined => {
-    const f = focus !== undefined ? byId.get(focus) : undefined;
-    if (f && onScreen(f)) return f;
+    for (const id of [focus, anchor]) {
+      const n = id !== undefined ? byId.get(id) : undefined;
+      if (n && onScreen(n)) return n;
+    }
     const top = barH();
     const [cx, cy] = screenToWorld(cam, [vw / 2, (top + vh) / 2]);
     let best: GNode | undefined;
@@ -345,11 +353,13 @@ export async function initGraph(root: HTMLElement): Promise<void> {
     }
     return best;
   };
+  /** `&f=0` (Ruling R17) whenever the hash node is not an open focus, so reload/share/Back never opens a panel the user did not have. */
   const currentHash = (): string => {
     if (focus === undefined && isInitial()) return '';
     const z = levelOf(cam.k);
     const n = viewNode(z);
-    return n ? encodeView({ node: n.id, z }) : '';
+    if (!n) return '';
+    return encodeView(n.id === focus && panel.isOpen ? { node: n.id, z } : { node: n.id, z, f: 0 });
   };
   const base = (): string => location.pathname + location.search;
   const writeHash = (): void => {
@@ -368,12 +378,18 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   /** Apply a decoded view: focus + panel + camera (no history entry). */
   const goTo = (v: GraphView, dur: number): void => {
     const n = v.node !== undefined ? byId.get(v.node) : undefined;
-    if (n) {
+    if (n && v.f === 0) {
+      setFocus(undefined);
+      anchor = n.id;
+      panel.hide();
+      flyCam(fitView(n, v.z), dur);
+    } else if (n) {
       setFocus(n.id);
       panel.show(n);
       flyCam(fitView(n, v.z), dur);
     } else {
       setFocus(undefined);
+      anchor = undefined;
       panel.hide();
       flyCam(initialCam(), dur);
     }
@@ -386,6 +402,7 @@ export async function initGraph(root: HTMLElement): Promise<void> {
   }
   const reset = (): void => {
     setFocus(undefined);
+    anchor = undefined;
     panel.hide();
     flyCam(initialCam(), FLY_MS);
     scheduleHash();
@@ -397,10 +414,17 @@ export async function initGraph(root: HTMLElement): Promise<void> {
     const b = canvas.getBoundingClientRect();
     return [e.clientX - b.left, e.clientY - b.top];
   };
+  const pointers = new Map<number, [number, number]>();
+  let down: { p: [number, number]; cam: Camera; moved: boolean } | null = null;
   const zoomBy = (at: [number, number], f: number): void => {
     stopFlight();
     cam = zoomAt(cam, at, f);
     movingUntil = performance.now() + MOVING_TAIL_MS;
+    // Mid-drag: rebase the drag on the zoomed camera, or the next move reverts the zoom.
+    if (down) {
+      const [p] = [...pointers.values()];
+      if (p) down = { p, cam, moved: true };
+    }
     cameraChanged();
   };
   const pick = (p: [number, number]): GNode | null =>
@@ -438,8 +462,6 @@ export async function initGraph(root: HTMLElement): Promise<void> {
     { passive: false },
   );
 
-  const pointers = new Map<number, [number, number]>();
-  let down: { p: [number, number]; cam: Camera; moved: boolean } | null = null;
   let pinch: { dist: number; mid: [number, number] } | null = null;
   const pinchOf = (): { dist: number; mid: [number, number] } => {
     const [a, b] = [...pointers.values()];
@@ -497,6 +519,8 @@ export async function initGraph(root: HTMLElement): Promise<void> {
         // Continue as a drag with the remaining finger, without a click on release.
         const [p] = [...pointers.values()];
         down = { p, cam, moved: true };
+        dragging = true;
+        canvas.classList.add('is-dragging');
       }
       return;
     }
@@ -594,6 +618,15 @@ export async function initGraph(root: HTMLElement): Promise<void> {
     wasMoving = moving;
   }, document);
   loop.start();
+  // Test hook (e2e): screen position of a node and the label boxes drawn last frame.
+  (root as HTMLElement & { graphDebug?: unknown }).graphDebug = {
+    screenOf: (id: PageId) => {
+      const n = byId.get(id);
+      return n ? worldToScreen(cam, [n.x, n.y]) : null;
+    },
+    labelBoxes: () => r.labelBoxes(),
+    barBottom: barH,
+  };
   root.dataset.ready = '';
 }
 

@@ -64,3 +64,30 @@ export function fitNode(n: GNode, view: { w: number; h: number }, level: 0 | 1 |
   const k = LEVEL_SCALE[level];
   return { x: n.x - view.w / (2 * k), y: n.y - view.h / (2 * k), k };
 }
+
+/**
+ * Screen-px margin kept around the topic ring in the initial view: a
+ * topic droplet's minimum screen radius plus its label and "N 份素材" line
+ * (labels are fixed screen px, so no world-unit margin works).
+ */
+export const RING_MARGIN_PX = 80;
+/** Radius of the topic ring set by build.ts. */
+export const TOPIC_RING = 1000;
+
+/**
+ * Initial L0 overview (Ruling R16): the whole topic ring fits in the
+ * `view.w` × (`view.h` − `view.top`) area below the top bar, centred on
+ * `centre` (the root) at screen `(w / 2, (top + h) / 2)`:
+ * `k = min(LEVEL_SCALE[0], (min(w, h − top) / 2 − 80) / (1000 + maxTopicR))`,
+ * clamped to `[K_MIN, K_MAX]`.
+ */
+export function initialCamera(
+  view: { w: number; h: number; top: number },
+  maxTopicR: number,
+  centre: [number, number] = [0, 0],
+): Camera {
+  const availH = view.h - view.top;
+  const fit = (Math.min(view.w, availH) / 2 - RING_MARGIN_PX) / (TOPIC_RING + Math.max(0, maxTopicR));
+  const k = Math.min(K_MAX, Math.max(K_MIN, Math.min(LEVEL_SCALE[0], fit)));
+  return { x: centre[0] - view.w / (2 * k), y: centre[1] - (view.top + view.h) / (2 * k), k };
+}

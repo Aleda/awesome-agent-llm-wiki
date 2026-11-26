@@ -54,6 +54,20 @@ export interface Renderer {
   resize(w: number, h: number, dpr: number): void;
   /** Re-read the colour tokens (call after the theme changes). */
   refreshTheme(): void;
+  /**
+   * Screen-px boxes (CSS px, halo included) of the node labels drawn in the
+   * last frame, topic labels including their "N 份素材" line. Relation pills
+   * avoid these; e2e uses them to check labels stay on screen (Task 12).
+   */
+  labelBoxes(): LabelBox[];
+}
+
+export interface LabelBox {
+  id: PageId;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }
 
 // ---------------------------------------------------------------- culling
@@ -389,6 +403,12 @@ function drawGlyph(ctx: CanvasRenderingContext2D, t: PageType, cx: number, cy: n
 const EDGE_ALPHA = 0.18;
 const EDGE_BEND = 0.08;
 const DIM = 0.15;
+/** Label line heights in CSS px for the label boxes (font size plus a little leading). */
+const LINE_H = { root: 24, topic: 22, sub: 15, concept: 16, small: 14 } as const;
+/** Halo stroke (3.5 px) half-width plus 1 px, added around every label box. */
+const LABEL_PAD = 3;
+/** Curve parameters tried, in order, for a relation pill. */
+const PILL_T = [0.5, 0.36, 0.64] as const;
 /** Screen-px half-extent of anything drawn around a node centre (card half-width, widest label). */
 const SCREEN_MARGIN = Math.max(CARD_W / 2, 140) + 8;
 const KIND_ROOT = 0;
@@ -487,6 +507,13 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
   const pts = new Float64Array(DROPLET_POINTS * 2);
   const dbuf = new Float64Array(2);
   const cards: (CardText | undefined)[] = new Array(N);
+  // Label widths per node (main line, sub line), measured once per theme/font.
+  const labelW = new Float64Array(N).fill(NaN);
+  const subW = new Float64Array(N).fill(NaN);
+  // Label boxes drawn this frame: x0, y0, x1, y1 per entry, owner node in lboxNode.
+  const lbox = new Float64Array(4 * N);
+  const lboxNode = new Int32Array(N);
+  let nLabel = 0;
   let frame = 0;
   let nVis = 0;
   let rx0 = 0;
@@ -825,6 +852,19 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
       c.strokeText(s, x, y);
       c.fillText(s, x, y);
     };
+    const widthOf = (cache: Float64Array, i: number, s: string): number => {
+      if (Number.isNaN(cache[i])) cache[i] = c.measureText(s).width;
+      return cache[i];
+    };
+    const addBox = (i: number, halfW: number, y0: number, y1: number): void => {
+      const b = 4 * nLabel;
+      lbox[b] = pos[2 * i] - halfW - LABEL_PAD;
+      lbox[b + 1] = y0 - LABEL_PAD;
+      lbox[b + 2] = pos[2 * i] + halfW + LABEL_PAD;
+      lbox[b + 3] = y1 + LABEL_PAD;
+      lboxNode[nLabel++] = i;
+    };
+    nLabel = 0;
     for (let v = nVis - 1; v >= 0; v--) {
       const i = order[v];
       const kd = kind[i];
@@ -836,22 +876,32 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
         c.globalAlpha = a.topicLabel * dim[i];
         c.fillStyle = theme.tones[0].solid;
         let sub = y + R + 8;
+        let w: number;
+        let top: number;
         if (kd === KIND_ROOT) {
           font(c, theme.fonts.root);
           c.textBaseline = 'middle';
           label(n.l, x, y);
+          w = widthOf(labelW, i, n.l);
+          top = y - LINE_H.root / 2;
         } else {
           font(c, theme.fonts.topic);
           c.textBaseline = 'top';
           label(n.l, x, sub);
+          w = widthOf(labelW, i, n.l);
+          top = sub;
           sub += 23;
         }
+        let bottom = kd === KIND_ROOT ? y + LINE_H.root / 2 : top + LINE_H.topic;
         if (subLabel[i]) {
           font(c, theme.fonts.sub);
           c.textBaseline = 'top';
           c.fillStyle = theme.muted;
           label(subLabel[i], x, sub);
+          w = Math.max(w, widthOf(subW, i, subLabel[i]));
+          bottom = sub + LINE_H.sub;
         }
+        addBox(i, w / 2, top, bottom);
       } else if (kd === KIND_CONCEPT || kd === KIND_ENTITY) {
         const alpha = (kd === KIND_CONCEPT ? l1 : lodEntity) * dim[i];
         if (alpha < 0.01) continue;
@@ -860,6 +910,7 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
         c.textBaseline = 'top';
         c.fillStyle = kd === KIND_CONCEPT ? theme.ink : theme.muted;
         label(n.l, x, y + R + 5);
+        addBox(i, widthOf(labelW, i, n.l) / 2, y + R + 5, y + R + 5 + (kd === KIND_CONCEPT ? LINE_H.concept : LINE_H.small));
       }
     }
 
@@ -873,20 +924,38 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
       const r = er[j];
       const pillAlpha = 0.95 * (kind[ea[j]] === KIND_SOURCE || kind[eb[j]] === KIND_SOURCE ? l1 : 1);
       if (pillAlpha < 0.01 || r < 0 || r >= REL_NAMES.length || !edgeGeom(ea[j], eb[j])) continue;
-      const mx = (geo[0] + 2 * geo[2] + geo[4]) / 4;
-      const my = (geo[1] + 2 * geo[3] + geo[5]) / 4;
       const s = REL_NAMES[r];
       const w = c.measureText(s).width + 12;
-      // Greedy de-overlap: skip a pill that would cover one already placed; stop at MAX_PILLS.
+      // Greedy de-overlap: a pill goes at the curve's midpoint, else a bit
+      // towards either end, at the first spot that covers neither a placed
+      // pill nor a node label; otherwise it is skipped. Stop at MAX_PILLS.
       if (nBox >= MAX_PILLS) break;
-      let clash = false;
-      for (let b = 0; b < nBox && !clash; b++) {
-        clash = Math.abs(boxes[4 * b] - mx) < (boxes[4 * b + 2] + w) / 2 && Math.abs(boxes[4 * b + 1] - my) < 19;
+      let mx = 0;
+      let my = 0;
+      let found = false;
+      for (let tIdx = 0; tIdx < PILL_T.length && !found; tIdx++) {
+        const t = PILL_T[tIdx];
+        const u = 1 - t;
+        mx = u * u * geo[0] + 2 * u * t * geo[2] + t * t * geo[4];
+        my = u * u * geo[1] + 2 * u * t * geo[3] + t * t * geo[5];
+        const x0 = mx - w / 2;
+        const x1 = mx + w / 2;
+        const y0 = my - 9;
+        const y1 = my + 9;
+        let clash = false;
+        for (let b = 0; b < nBox && !clash; b++) {
+          clash = x0 < boxes[4 * b + 2] && x1 > boxes[4 * b] && y0 < boxes[4 * b + 3] + 1 && y1 + 1 > boxes[4 * b + 1];
+        }
+        for (let b = 0; b < nLabel && !clash; b++) {
+          clash = x0 < lbox[4 * b + 2] && x1 > lbox[4 * b] && y0 < lbox[4 * b + 3] && y1 > lbox[4 * b + 1];
+        }
+        found = !clash;
       }
-      if (clash) continue;
-      boxes[4 * nBox] = mx;
-      boxes[4 * nBox + 1] = my;
-      boxes[4 * nBox + 2] = w;
+      if (!found) continue;
+      boxes[4 * nBox] = mx - w / 2;
+      boxes[4 * nBox + 1] = my - 9;
+      boxes[4 * nBox + 2] = mx + w / 2;
+      boxes[4 * nBox + 3] = my + 9;
       nBox++;
       c.globalAlpha = pillAlpha;
       c.beginPath();
@@ -950,8 +1019,17 @@ export function createRenderer(canvas: HTMLCanvasElement, data: GraphData): Rend
         canvas.style.height = `${vh}px`;
       }
     },
+    labelBoxes() {
+      const out: LabelBox[] = [];
+      for (let b = 0; b < nLabel; b++) {
+        out.push({ id: nodes[lboxNode[b]].id, x0: lbox[4 * b], y0: lbox[4 * b + 1], x1: lbox[4 * b + 2], y1: lbox[4 * b + 3] });
+      }
+      return out;
+    },
     refreshTheme() {
       theme = readTheme(ctx);
+      labelW.fill(NaN);
+      subW.fill(NaN);
       cards.fill(undefined);
       cardShadowDpr = 0;
       curFont = '';

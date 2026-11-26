@@ -397,6 +397,29 @@ describe('renderer', () => {
     expect(labelCalls.some((c) => Object.values(REL_LABEL).includes(String(c.args[0])))).toBe(true);
   });
 
+  test('labelBoxes reports drawn labels and relation pills never cover one (Task 12)', () => {
+    const topic = g.nodes.find((n) => n.id === 'wiki/topics/context')!;
+    const { canvas, calls } = recordingCanvas();
+    const r = createRenderer(canvas, g);
+    r.resize(1280, 720, 1);
+    const cam0 = { x: -1280 / 2 / 0.24, y: -720 / 2 / 0.24, k: 0.24 };
+    r.draw(cam0, stateOf({ hover: topic.id, neighbors: new Set(['wiki/topics/agent', 'wiki/concepts/context-compaction', 'wiki/concepts/isolated-idea']) }));
+    const boxes = r.labelBoxes();
+    expect(boxes.map((b) => b.id)).toEqual(expect.arrayContaining(['wiki/topics/agent', 'wiki/topics/context', 'wiki/topics/memory']));
+    for (const b of boxes) expect(b.x1 > b.x0 && b.y1 > b.y0).toBe(true);
+    const rel = new Set(Object.values(REL_LABEL));
+    const pills = calls.filter((c) => c.m === 'fillText' && rel.has(String(c.args[0])));
+    expect(pills.length).toBeGreaterThan(0);
+    for (const p of pills) {
+      const w = String(p.args[0]).length * 7 + 12;
+      const [x, y] = [Number(p.args[1]), Number(p.args[2]) - 0.5];
+      for (const b of boxes) {
+        const overlap = x - w / 2 < b.x1 && x + w / 2 > b.x0 && y - 9 < b.y1 && y + 9 > b.y0;
+        expect(overlap, `${p.args[0]} pill over ${b.id} label`).toBe(false);
+      }
+    }
+  });
+
   test('reduced motion draws droplets as arcs, not wobbling curves', () => {
     const { canvas, calls } = recordingCanvas();
     const r = createRenderer(canvas, g);
