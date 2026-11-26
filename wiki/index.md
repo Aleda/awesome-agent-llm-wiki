@@ -15,11 +15,13 @@ type: raw
 
 ## 概念
 
-（待录入）
+- [模型自管理上下文](concepts/model-managed-context.md) — 由正在执行任务的模型决定上下文里保留、改写和删除什么，而不是交给外部固定规则
+- [后缀缓存复用](concepts/suffix-cache-reuse.md) — 上下文中段被编辑后，复用未改动后缀的旧 KV cache，只重新计算新插入的部分
+- [成功门控的效率奖励](concepts/success-gated-efficiency-reward.md) — RL 中只在成功轨迹之间按推理成本给效率奖励，避免模型为省算力牺牲正确性
 
 ## 论文
 
-（待录入）
+- [Context Language Models](papers/202609-context-language-models.md) — 把实时上下文镜像成文件，让模型用 Bash 自由编辑，长程任务上更准也更省算力
 
 ## Blog
 
@@ -27,7 +29,7 @@ type: raw
 
 ## 视频
 
-（待录入）
+- [CLM 讲解（Agent智能体深度研究院）](videos/20261125-agent-deep-research-clm.md) — B 站对 CLM 论文的 13 分钟中文讲解，补充了分层组合与落地风险的看法
 
 ## 播客
 
@@ -35,4 +37,5 @@ type: raw
 
 ## 实体
 
-（待录入）
+- [Meta](entities/meta.md) — 美国科技公司，本页同时收录其 Meta Superintelligence Labs 参与的素材
+- [University of Washington](entities/uw.md) — 美国华盛顿大学，位于西雅图的公立研究型大学

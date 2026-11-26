@@ -18,3 +18,6 @@ type: raw
 
 2026-11-26 新建 · topics/agent.md、topics/context.md、topics/memory.md、topics/rsi.md、topics/continual-learning.md
 2026-11-26 更新 · glossary.md、index.md
+2026-11-27 录入素材 · papers/202609-context-language-models.md、videos/20261125-agent-deep-research-clm.md
+2026-11-27 新建 · concepts/model-managed-context.md、concepts/suffix-cache-reuse.md、concepts/success-gated-efficiency-reward.md、entities/meta.md、entities/uw.md
+2026-11-27 更新 · topics/context.md、glossary.md、index.md
