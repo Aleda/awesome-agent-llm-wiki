@@ -1,0 +1,107 @@
+---
+/**
+ * Left header card ("元信息") for a content page: `metaCard(id, idx)` rows
+ * rendered as a bordered card, left border tinted by the page's type
+ * color (`--c-<type>`). Used by `PageTitle.astro` (Task 7).
+ */
+import type { CardRow } from '../lib/page-info';
+import type { PageType } from '../lib/schema';
+
+interface Props {
+  rows: CardRow[];
+  type: PageType;
+}
+
+const { rows, type } = Astro.props;
+---
+
+<aside class="meta-card" style={`--accent: var(--c-${type})`}>
+  {
+    rows.map((row) => (
+      <div class="row">
+        <span class="label">{row.label}</span>
+        <span class="items">
+          {row.items.map((item, i) => (
+            <>
+              {i > 0 && <span class="sep">、</span>}
+              {item.href !== undefined ? (
+                <a href={item.href} data-preview={item.preview}>
+                  {item.text}
+                  {item.rel !== undefined && <span class="rel">（{item.rel}）</span>}
+                </a>
+              ) : (
+                <span>
+                  {item.text}
+                  {item.rel !== undefined && <span class="rel">（{item.rel}）</span>}
+                </span>
+              )}
+            </>
+          ))}
+          {row.overflow.length > 0 && (
+            <details class="overflow">
+              <summary>其余 {row.overflow.length} 条</summary>
+              {row.overflow.map((item) => (
+                <div class="overflow-item">
+                  {item.href !== undefined ? (
+                    <a href={item.href} data-preview={item.preview}>
+                      {item.text}
+                    </a>
+                  ) : (
+                    <span>{item.text}</span>
+                  )}
+                  {item.rel !== undefined && <span class="rel">（{item.rel}）</span>}
+                </div>
+              ))}
+            </details>
+          )}
+        </span>
+      </div>
+    ))
+  }
+</aside>
+
+<style>
+  .meta-card {
+    border: 1px solid var(--card-border);
+    border-left: 3px solid var(--accent);
+    border-radius: 0.5rem;
+    background: var(--card-bg);
+    box-shadow: var(--card-shadow);
+    padding: 0.75rem 1rem;
+    font-size: 0.875rem;
+  }
+  .row {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.25rem 0;
+  }
+  .row + .row {
+    border-top: 1px solid var(--card-border);
+  }
+  .label {
+    flex: 0 0 4.5em;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .items {
+    flex: 1;
+    min-width: 0;
+  }
+  .sep {
+    color: var(--card-border);
+  }
+  .rel {
+    opacity: 0.7;
+  }
+  .overflow {
+    display: inline;
+  }
+  .overflow summary {
+    display: inline;
+    cursor: pointer;
+    color: var(--accent);
+  }
+  .overflow-item {
+    margin-top: 0.25rem;
+  }
+</style>

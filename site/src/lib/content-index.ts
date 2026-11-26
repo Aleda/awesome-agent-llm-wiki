@@ -5,7 +5,7 @@ import { pageSchema, type PageFrontmatter, type PageType, type Rel } from './sch
 import type { z } from 'astro/zod';
 import type { bySchema } from './schema';
 
-type By = z.infer<typeof bySchema>;
+export type By = z.infer<typeof bySchema>;
 
 export type PageId = string;
 
@@ -53,6 +53,9 @@ export interface PageInfo {
   status?: string;
   root?: boolean;
   order?: number;
+  code?: string;
+  pages?: number;
+  show?: string;
 }
 
 /**

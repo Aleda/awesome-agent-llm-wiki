@@ -1,8 +1,91 @@
 ---
-// Placeholder override for Starlight's PageTitle; Task 7 replaces it with
-// the meta card. Starlight 0.43's PageTitle reads everything from
-// Astro.locals.starlightRoute, so it takes no props.
+/**
+ * Overrides Starlight's default PageTitle (Task 7). Renders the default
+ * `<h1>` first, then — for pages that have one — the meta/source cards
+ * built from `.generated/index.json`:
+ *
+ * - source pages (paper/blog/video/podcast): left `MetaCard`, right
+ *   `SourceCard`, side by side at >= 50rem viewport width, stacked below.
+ * - concept and topic pages: `MetaCard` alone (concept-card / topic-card
+ *   fields, see `metaCard` in `page-info.ts`).
+ * - raw and entity pages: no cards.
+ *
+ * The current page's `PageId` is derived from `Astro.locals.starlightRoute
+ * .entry.id`, which — per `site/src/content.config.ts`'s `generateId` — is
+ * the docs-relative path without extension (e.g.
+ * `wiki/papers/202611-sample-paper`), the same id used throughout
+ * `.generated/index.json`. Starlight normalizes a bare `index` slug to `''`
+ * (see `normalizeIndexSlug` in `@astrojs/starlight`); this only matters for
+ * `wiki/index`, which is `type: raw` and gets no cards regardless.
+ */
+import fs from 'node:fs';
+import path from 'node:path';
 import Default from '@astrojs/starlight/components/PageTitle.astro';
+import MetaCard from './MetaCard.astro';
+import SourceCard from './SourceCard.astro';
+import { metaCard, sourceCard } from '../lib/page-info';
+import type { GeneratedIndex, PageId } from '../lib/content-index';
+
+const INDEX_PATH = '.generated/index.json';
+
+let cachedIndex: GeneratedIndex | undefined;
+
+function loadIndex(): GeneratedIndex | null {
+  if (cachedIndex !== undefined) return cachedIndex;
+  try {
+    const raw = fs.readFileSync(path.resolve(process.cwd(), INDEX_PATH), 'utf8');
+    cachedIndex = JSON.parse(raw) as GeneratedIndex;
+    return cachedIndex;
+  } catch {
+    return null; // prepare step hasn't run (e.g. config loaded standalone)
+  }
+}
+
+const entryId = Astro.locals.starlightRoute.entry.id;
+// `entry.id` already equals the docs-relative path without extension
+// (content.config.ts's generateId); Starlight only rewrites a bare
+// `index` to `''`, which can't collide with a real wiki/* id.
+const pageId: PageId | null = entryId === '' ? null : entryId;
+
+const index = loadIndex();
+const info = pageId !== null ? index?.pages[pageId] : undefined;
+
+const SOURCE_TYPES = new Set(['paper', 'blog', 'video', 'podcast']);
+const META_ONLY_TYPES = new Set(['concept', 'topic']);
+
+const showSourceLayout = info !== undefined && SOURCE_TYPES.has(info.type);
+const showMetaOnly = info !== undefined && META_ONLY_TYPES.has(info.type);
+
+const metaRows = pageId !== null && index !== null ? metaCard(pageId, index) : [];
+const sourceRows = pageId !== null && index !== null ? sourceCard(pageId, index) : [];
 ---
 
 <Default />
+
+{
+  info !== undefined && (showSourceLayout || showMetaOnly) && (
+    <div class="header-cards" data-layout={showSourceLayout ? 'two-up' : 'one-up'}>
+      <MetaCard rows={metaRows} type={info.type} />
+      {showSourceLayout && <SourceCard rows={sourceRows} type={info.type} />}
+    </div>
+  )
+}
+
+<style>
+  .header-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1rem 0 1.5rem;
+  }
+
+  @media (min-width: 50rem) {
+    .header-cards[data-layout='two-up'] {
+      flex-direction: row;
+    }
+    .header-cards[data-layout='two-up'] > :global(*) {
+      flex: 1;
+      min-width: 0;
+    }
+  }
+</style>

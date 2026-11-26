@@ -105,6 +105,9 @@ function toPageInfo(page: Page): PageInfo {
   if (typeof fm.status === 'string') info.status = fm.status;
   if (typeof fm.root === 'boolean') info.root = fm.root;
   if (typeof fm.order === 'number') info.order = fm.order;
+  if (typeof fm.code === 'string') info.code = fm.code;
+  if (typeof fm.pages === 'number') info.pages = fm.pages;
+  if (typeof fm.show === 'string') info.show = fm.show;
   return info;
 }
 

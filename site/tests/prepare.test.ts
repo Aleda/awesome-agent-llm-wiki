@@ -142,6 +142,129 @@ describe('prepare clears stale output', () => {
   });
 });
 
+describe('prepare carries paper code/pages and podcast show into PageInfo', () => {
+  test('paper code/pages and podcast show survive into index.json', async () => {
+    const root = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-test-codeshow-root-'));
+    const siteDir = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-test-codeshow-site-'));
+    try {
+      await fs.mkdir(path.join(root, 'wiki/topics'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'wiki/topics/agent.md'),
+        [
+          '---',
+          'title: Agent',
+          'type: topic',
+          'summary: 根主题。',
+          'added: 2026-11-26',
+          'root: true',
+          '---',
+          '',
+          '## 这个方向在解决什么',
+          '',
+        ].join('\n'),
+      );
+
+      await fs.mkdir(path.join(root, 'wiki/concepts'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'wiki/concepts/demo-concept.md'),
+        [
+          '---',
+          'title: Demo Concept',
+          'type: concept',
+          'summary: 临时测试概念。',
+          'topics: [agent]',
+          'added: 2026-11-26',
+          'status: emerging',
+          'relations:',
+          '  - { topic: agent, rel: part-of }',
+          '---',
+          '',
+          '## 定义',
+          '',
+          '临时测试内容。',
+          '',
+        ].join('\n'),
+      );
+
+      await fs.mkdir(path.join(root, 'sources/papers/0000.00000'), { recursive: true });
+      await fs.writeFile(path.join(root, 'sources/papers/0000.00000/anchors.md'), '');
+
+      await fs.mkdir(path.join(root, 'wiki/papers'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'wiki/papers/demo-paper.md'),
+        [
+          '---',
+          'title: Demo Paper',
+          'type: paper',
+          'summary: 临时测试论文。',
+          'topics: [agent]',
+          'added: 2026-11-26',
+          'date: 2026-11-03',
+          'url: https://arxiv.org/abs/0000.00000',
+          'source_dir: sources/papers/0000.00000',
+          'venue: arXiv',
+          'code: https://github.com/example/demo',
+          'pages: 31',
+          'by: []',
+          'relations:',
+          '  - { concept: demo-concept, rel: proposes }',
+          '---',
+          '',
+          '## 新认知',
+          '',
+          '- 临时测试要点。',
+          '',
+        ].join('\n'),
+      );
+
+      await fs.mkdir(path.join(root, 'sources/podcasts/demo/20261101-abc'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'sources/podcasts/demo/20261101-abc/transcript.md'),
+        '[00:00:00] 第一段开场\n',
+      );
+
+      await fs.mkdir(path.join(root, 'wiki/podcasts'), { recursive: true });
+      await fs.writeFile(
+        path.join(root, 'wiki/podcasts/demo-podcast.md'),
+        [
+          '---',
+          'title: Demo Podcast',
+          'type: podcast',
+          'summary: 临时测试播客。',
+          'topics: [agent]',
+          'added: 2026-11-26',
+          'date: 2026-11-01',
+          'url: https://example.com/episode',
+          'source_dir: sources/podcasts/demo/20261101-abc',
+          'venue: 小宇宙',
+          'show: 十字路口',
+          'duration: 41',
+          'by:',
+          '  - { name: 主持人, role: host }',
+          '  - { name: 嘉宾, role: guest }',
+          'relations:',
+          '  - { concept: demo-concept, rel: supports }',
+          '---',
+          '',
+          '## 新认知',
+          '',
+          '- 临时测试要点。',
+          '',
+        ].join('\n'),
+      );
+
+      await prepare({ root, siteDir });
+      const idx = JSON.parse(read(siteDir, '.generated/index.json'));
+      expect(idx.pages['wiki/papers/demo-paper'].code).toBe('https://github.com/example/demo');
+      expect(idx.pages['wiki/papers/demo-paper'].pages).toBe(31);
+      expect(idx.pages['wiki/podcasts/demo-podcast'].show).toBe('十字路口');
+    } finally {
+      await fs.rm(root, { recursive: true, force: true });
+      await fs.rm(siteDir, { recursive: true, force: true });
+    }
+  });
+});
+
 describe('prepare glossary fallback', () => {
   test('writes an empty glossary.json when wiki/glossary.md is missing', async () => {
     const root = await fs.mkdtemp(path.join(os.tmpdir(), 'prepare-test-noglossary-root-'));
